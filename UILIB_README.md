@@ -6,7 +6,7 @@ A comprehensive, modern UI library for Roblox scripts with rich features and bea
 
 ```lua
 -- Load UILIB directly from GitHub
-local UILIB = loadstring(game:HttpGet("https://raw.githubusercontent.com/Renn0/UILib/main/UILIB.lua"))()
+local UILIB = loadstring(game:HttpGet("https://raw.githubusercontent.com/ncmpuff/UILib/main/UILIB.lua"))()
 
 -- Create your window
 local Window = UILIB:CreateWindow({
