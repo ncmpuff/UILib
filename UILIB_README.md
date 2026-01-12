@@ -1,6 +1,25 @@
-# JPUFF UI LIBRARY V1.0 📚
+# JPUFF UILIB - Roblox UI Library
 
-A beautiful, feature-rich UI library for Roblox scripts with smooth animations and the iconic Jigglypuff pink theme.
+A comprehensive, modern UI library for Roblox scripts with rich features and beautiful aesthetics.
+
+## 🚀 Quick Start (Load from GitHub)
+
+```lua
+-- Load UILIB directly from GitHub
+local UILIB = loadstring(game:HttpGet("https://raw.githubusercontent.com/Renn0/UILib/main/UILIB.lua"))()
+
+-- Create your window
+local Window = UILIB:CreateWindow({
+    Title = "My Script",
+    SubTitle = "v1.0",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(580, 460),
+    Acrylic = true,
+    Theme = "Dark"
+})
+```
+
+## 📦 Alternative: Local Installation
 
 ## ✨ Features
 
