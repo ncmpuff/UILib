@@ -881,6 +881,7 @@ function UILib:CreateTextInput(panel, config)
 end
 
 -- =====================================================
+<<<<<<< HEAD
 -- TEXTBOX (WITH LABEL AND CALLBACK)
 -- =====================================================
 function UILib:CreateTextbox(panel, config)
@@ -973,6 +974,8 @@ function UILib:CreateTextbox(panel, config)
 end
 
 -- =====================================================
+=======
+>>>>>>> 370599a58c9bd387655befc94244879f548e6bb3
 -- SLIDER
 -- =====================================================
 function UILib:CreateSlider(panel, config)
