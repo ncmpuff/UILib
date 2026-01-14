@@ -992,6 +992,7 @@ function UILib:CreateDropdown(panel, config)
     local label = config.Label or "Dropdown"
     local options = config.Options or {"Option 1", "Option 2", "Option 3"}
     local callback = config.Callback or function() end
+    local enableSearch = config.EnableSearch ~= false -- Default to true
     local y = panel.ContentY
     
     -- Label
@@ -1059,10 +1060,40 @@ function UILib:CreateDropdown(panel, config)
     optionsStroke.Color = UILib.Colors.JPUFF_PINK
     optionsStroke.Transparency = 0.6
     
+    -- Search textbox (at top of dropdown)
+    local searchBox = nil
+    local searchOffset = 0
+    
+    if enableSearch then
+        searchBox = Instance.new("TextBox", optionsContainer)
+        searchBox.Size = UDim2.new(1, -20, 0, 35)
+        searchBox.Position = UDim2.fromOffset(10, 5)
+        searchBox.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+        searchBox.Text = ""
+        searchBox.PlaceholderText = "🔍 Search..."
+        searchBox.Font = Enum.Font.GothamMedium
+        searchBox.TextSize = 14
+        searchBox.TextColor3 = UILib.Colors.TEXT_PRIMARY
+        searchBox.PlaceholderColor3 = Color3.fromRGB(150, 150, 160)
+        searchBox.BorderSizePixel = 0
+        searchBox.BackgroundTransparency = 0.3
+        searchBox.TextXAlignment = Enum.TextXAlignment.Left
+        searchBox.ClearTextOnFocus = false
+        searchBox.ZIndex = 101
+        Instance.new("UICorner", searchBox).CornerRadius = UDim.new(0, 8)
+        
+        local searchStroke = Instance.new("UIStroke", searchBox)
+        searchStroke.Color = UILib.Colors.JPUFF_PINK
+        searchStroke.Transparency = 0.8
+        searchStroke.Thickness = 1
+        
+        searchOffset = 45 -- Offset for options below search
+    end
+    
     -- Scrolling frame for options
     local scrollFrame = Instance.new("ScrollingFrame", optionsContainer)
-    scrollFrame.Size = UDim2.fromScale(1, 1)
-    scrollFrame.Position = UDim2.fromOffset(0, 0)
+    scrollFrame.Size = UDim2.new(1, 0, 1, -searchOffset)
+    scrollFrame.Position = UDim2.fromOffset(0, searchOffset)
     scrollFrame.BackgroundTransparency = 1
     scrollFrame.BorderSizePixel = 0
     scrollFrame.ScrollBarThickness = 4
@@ -1076,6 +1107,7 @@ function UILib:CreateDropdown(panel, config)
     
     local isOpen = false
     local selectedOption = nil
+    local optionButtons = {}
     
     -- Create option buttons
     for i, option in ipairs(options) do
@@ -1091,13 +1123,15 @@ function UILib:CreateDropdown(panel, config)
         optionBtn.ZIndex = 102
         Instance.new("UICorner", optionBtn).CornerRadius = UDim.new(0, 8)
         
+        optionButtons[option] = optionBtn
+        
         -- Hover effect
         optionBtn.MouseEnter:Connect(function()
             TweenService:Create(optionBtn, TweenInfo.new(0.2), {
                 BackgroundColor3 = Color3.fromRGB(60, 60, 70),
                 BackgroundTransparency = 0
             }):Play()
-        end)
+end)
         
         optionBtn.MouseLeave:Connect(function()
             TweenService:Create(optionBtn, TweenInfo.new(0.2), {
@@ -1128,6 +1162,27 @@ function UILib:CreateDropdown(panel, config)
         end)
     end
     
+    -- Search filtering
+    if searchBox then
+        searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+            local searchText = searchBox.Text:lower()
+            local visibleCount = 0
+            
+            for option, btn in pairs(optionButtons) do
+                if searchText == "" or option:lower():find(searchText, 1, true) then
+                    btn.Visible = true
+                    visibleCount = visibleCount + 1
+                else
+                    btn.Visible = false
+                end
+            end
+            
+            -- Update canvas size based on visible options
+            listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Wait()
+            scrollFrame.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 10)
+        end)
+    end
+    
     -- Update scroll canvas size
     listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
         scrollFrame.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 10)
@@ -1140,12 +1195,18 @@ function UILib:CreateDropdown(panel, config)
         
         if isOpen then
             optionsContainer.Visible = true
-            local maxHeight = math.min(#options * 42, 200)
+            local maxHeight = math.min(#options * 42 + searchOffset, 200 + searchOffset)
             
             TweenService:Create(arrow, TweenInfo.new(0.3), {Rotation = 180}):Play()
             TweenService:Create(optionsContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
                 Size = UDim2.new(1, -60, 0, maxHeight)
             }):Play()
+            
+            -- Focus search box when opened
+            if searchBox then
+                task.wait(0.1)
+                searchBox:CaptureFocus()
+            end
         else
             TweenService:Create(arrow, TweenInfo.new(0.3), {Rotation = 0}):Play()
             TweenService:Create(optionsContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
@@ -1155,6 +1216,11 @@ function UILib:CreateDropdown(panel, config)
             task.delay(0.3, function()
                 optionsContainer.Visible = false
             end)
+            
+            -- Clear search when closed
+            if searchBox then
+                searchBox.Text = ""
+            end
         end
     end)
     
