@@ -1070,7 +1070,7 @@ function UILib:CreateDropdown(panel, config)
         searchBox.Position = UDim2.fromOffset(10, 5)
         searchBox.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
         searchBox.Text = ""
-        searchBox.PlaceholderText = "🔍 Search..."
+        searchBox.PlaceholderText = "Search..."
         searchBox.Font = Enum.Font.GothamMedium
         searchBox.TextSize = 14
         searchBox.TextColor3 = UILib.Colors.TEXT_PRIMARY
