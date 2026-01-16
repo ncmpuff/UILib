@@ -1030,7 +1030,7 @@ function UILib:CreateDropdown(panel, config)
     selectedText.Font = Enum.Font.GothamMedium
     selectedText.TextSize = 15
     selectedText.TextColor3 = UILib.Colors.TEXT_SECONDARY
-    selectedText.TextXAlignment = Enum.TextXAlignment.Left
+    selectedText.TextXAlignment = Enum.TextXAlignment.Center
     selectedText.TextTransparency = 0
     
     -- Arrow indicator
@@ -1235,6 +1235,86 @@ end)
         end,
         GetValue = function()
             return selectedOption
+        end,
+        UpdateOptions = function(newOptions)
+            -- Clear old option buttons
+            for _, btn in pairs(optionButtons) do
+                btn:Destroy()
+            end
+            optionButtons = {}
+            
+            -- Create new option buttons
+            for i, option in ipairs(newOptions) do
+                local optionBtn = Instance.new("TextButton", scrollFrame)
+                optionBtn.Size = UDim2.new(1, -10, 0, 40)
+                optionBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+                optionBtn.Text = option
+                optionBtn.Font = Enum.Font.GothamMedium
+                optionBtn.TextSize = 14
+                optionBtn.TextColor3 = UILib.Colors.TEXT_PRIMARY
+                optionBtn.BorderSizePixel = 0
+                optionBtn.BackgroundTransparency = 0.3
+                optionBtn.ZIndex = 102
+                Instance.new("UICorner", optionBtn).CornerRadius = UDim.new(0, 8)
+                
+                optionButtons[option] = optionBtn
+                
+                -- Hover effect
+                optionBtn.MouseEnter:Connect(function()
+                    TweenService:Create(optionBtn, TweenInfo.new(0.2), {
+                        BackgroundColor3 = Color3.fromRGB(60, 60, 70),
+                        BackgroundTransparency = 0
+                    }):Play()
+                end)
+                
+                optionBtn.MouseLeave:Connect(function()
+                    TweenService:Create(optionBtn, TweenInfo.new(0.2), {
+                        BackgroundColor3 = Color3.fromRGB(40, 40, 50),
+                        BackgroundTransparency = 0.3
+                    }):Play()
+                end)
+                
+                -- Click handler
+                optionBtn.MouseButton1Click:Connect(function()
+                    selectedOption = option
+                    selectedText.Text = option
+                    selectedText.TextColor3 = UILib.Colors.TEXT_PRIMARY
+                    
+                    -- Close dropdown
+                    isOpen = false
+                    TweenService:Create(arrow, TweenInfo.new(0.3), {Rotation = 0}):Play()
+                    TweenService:Create(optionsContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+                        Size = UDim2.new(1, -60, 0, 0)
+                    }):Play()
+                    
+                    task.delay(0.3, function()
+                        optionsContainer.Visible = false
+                    end)
+                    
+                    -- Execute callback
+                    callback(option)
+                end)
+            end
+            
+            -- Update scroll canvas size
+            task.wait(0.05) -- Wait for layout to update
+            scrollFrame.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 10)
+            
+            -- Reset selected text if current selection is no longer in options
+            if selectedOption then
+                local found = false
+                for _, opt in ipairs(newOptions) do
+                    if opt == selectedOption then
+                        found = true
+                        break
+                    end
+                end
+                if not found then
+                    selectedOption = nil
+                    selectedText.Text = "Select..."
+                    selectedText.TextColor3 = UILib.Colors.TEXT_SECONDARY
+                end
+            end
         end
     }
 end
