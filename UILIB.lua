@@ -1195,7 +1195,7 @@ end)
         
         if isOpen then
             optionsContainer.Visible = true
-            local maxHeight = math.min(#options * 42 + searchOffset, 200 + searchOffset)
+            local maxHeight = math.min(#options * 42 + searchOffset, 350 + searchOffset)
             
             TweenService:Create(arrow, TweenInfo.new(0.3), {Rotation = 180}):Play()
             TweenService:Create(optionsContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
