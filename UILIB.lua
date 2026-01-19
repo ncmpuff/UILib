@@ -751,9 +751,13 @@ function UILib:CreateToggle(panel, config)
     label.TextYAlignment = Enum.TextYAlignment.Center
     label.TextTransparency = 0
 
+    -- Calculate responsive toggle position based on panel width
+    local toggleRightMargin = 15
+    local toggleOffset = -(sizes.ToggleTrackWidth + toggleRightMargin)
+    
     local track = Instance.new("Frame", panel.ScrollingFrame)
     track.Size = UDim2.fromOffset(sizes.ToggleTrackWidth, sizes.ToggleTrackHeight)
-    track.Position = UDim2.new(1, -120, 0, y + 2.5)
+    track.Position = UDim2.new(1, toggleOffset, 0, y + 2.5)
     track.BackgroundColor3 = initialState and UILib.Colors.JPUFF_HOT_PINK or UILib.Colors.TOGGLE_OFF
     track.BorderSizePixel = 0
     track.BackgroundTransparency = 0
