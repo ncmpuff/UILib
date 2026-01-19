@@ -739,9 +739,15 @@ function UILib:CreateToggle(panel, config)
     -- Get platform-specific sizes
     local sizes = self:GetSizes()
 
+    -- Calculate responsive label width to leave space for toggle
+    local labelLeftMargin = 30
+    local toggleRightMargin = 15
+    local labelToggleSpacing = 10
+    local totalToggleSpace = sizes.ToggleTrackWidth + toggleRightMargin + labelToggleSpacing
+    
     local label = Instance.new("TextLabel", panel.ScrollingFrame)
-    label.Size = UDim2.new(1, -150, 0, 45)
-    label.Position = UDim2.fromOffset(30, y)
+    label.Size = UDim2.new(1, -(labelLeftMargin + totalToggleSpace), 0, 45)
+    label.Position = UDim2.fromOffset(labelLeftMargin, y)
     label.BackgroundTransparency = 1
     label.Text = labelText
     label.Font = Enum.Font.GothamMedium
