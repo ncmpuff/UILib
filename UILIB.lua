@@ -91,7 +91,7 @@ UILib.MobileSizes = {
     
     -- Panel
     PanelWidth = 240,
-    PanelHeight = 400,
+    PanelHeight = 280,  -- Match selector height
     PanelOffsetX = 175,
     
     -- Text sizes
