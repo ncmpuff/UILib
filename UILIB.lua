@@ -24,7 +24,7 @@ local gui = player:WaitForChild("PlayerGui")
 function UILib:AddMethods(window)
     -- Window Navigation
     window.ShowPanel = function(self, panelName)
-        UILib:ShowPanel(s   elf, panelName)
+        UILib:ShowPanel(self, panelName)
     end
     
     window.HidePanel = function(self, panelName)
