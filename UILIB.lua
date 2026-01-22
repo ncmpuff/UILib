@@ -9,6 +9,9 @@ local UILib = {}
 -- Shared state for auto-closing collapsible toggles
 UILib.OpenCollapsibles = {}
 
+-- Global animation lock to prevent simultaneous arrow clicks
+UILib.CollapsibleAnimating = false
+
 -- Services
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -1135,7 +1138,7 @@ function UILib:CreateCollapsibleToggle(panel, config)
         subImgOn.Size = UDim2.fromScale(1.2, 1.2)
         subImgOn.Position = UDim2.fromScale(-0.1, -0.1)
         subImgOn.BackgroundTransparency = 1
-        subImgOn.Image = "rbxthumb://type=Asset&id=134295051311593&w=150&h=150"
+        subImgOn.Image = "rbxthumb://type=Asset&id=111028440784816&w=150&h=150"
         subImgOn.ScaleType = Enum.ScaleType.Crop
         subImgOn.BorderSizePixel = 0
         subImgOn.ZIndex = 2
@@ -1289,14 +1292,14 @@ function UILib:CreateCollapsibleToggle(panel, config)
     end
     
     arrowButton.MouseButton1Click:Connect(function()
-        -- ANTI-SPAM: Ignore clicks while animating
-        if isAnimating then 
-            warn(string.format("⛔ CLICK IGNORED for '%s' - animation in progress", labelText))
+        -- GLOBAL ANTI-SPAM: Ignore clicks while ANY collapsible is animating
+        if UILib.CollapsibleAnimating then 
+            warn(string.format("⛔ CLICK IGNORED for '%s' - another toggle is animating", labelText))
             return 
         end
         
-        isAnimating = true  -- Lock button
-        warn(string.format("\n⬇️ ARROW CLICKED for '%s' - isExpanded: %s → %s [VERSION:ANTI-SPAM-v1]", labelText, tostring(isExpanded), tostring(not isExpanded)))
+        UILib.CollapsibleAnimating = true  -- Lock ALL collapsible toggles globally
+        warn(string.format("\n⬇️ ARROW CLICKED for '%s' - isExpanded: %s → %s [VERSION:GLOBAL-LOCK-v1]", labelText, tostring(isExpanded), tostring(not isExpanded)))
 
         
         local targetState = not isExpanded
@@ -1330,8 +1333,8 @@ function UILib:CreateCollapsibleToggle(panel, config)
             
             -- Unlock after collapse animation completes
             task.delay(0.3, function()
-                isAnimating = false
-                warn(string.format("🔓 UNLOCKED '%s' after collapse", labelText))
+                UILib.CollapsibleAnimating = false
+                warn(string.format("🔓 GLOBALLY UNLOCKED after '%s' collapse", labelText))
             end)
             
             return  -- Exit early since collapseThisToggle handles everything
@@ -1410,10 +1413,11 @@ function UILib:CreateCollapsibleToggle(panel, config)
         panel.ContentY = panel.ContentY + subToggleHeight
 
         
-        task.delay(0.3, function()
+        -- Unlock after full expand sequence (auto-close delay + expand animation)
+        task.delay(1.3, function()
             panel:UpdateCanvasSize()
-            isAnimating = false  -- Unlock after expand animation completes
-            warn(string.format("🔓 UNLOCKED '%s' after expand", labelText))
+            UILib.CollapsibleAnimating = false
+            warn(string.format("🔓 GLOBALLY UNLOCKED after '%s' expand", labelText))
         end)
     end)
 
