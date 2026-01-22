@@ -1264,8 +1264,16 @@ function UILib:CreateCollapsibleToggle(panel, config)
             
             panel.ContentY = panel.ContentY + subToggleHeight
         else
+            warn("  → Collapsing: hiding sub-toggles")
             -- Hide sub-toggles with animation
             for i, frameData in ipairs(subFrames) do
+                -- IMPORTANT: Before hiding, reset icon transparency to ensure clean re-expand
+                if frameData.imgOn and frameData.imgOff then
+                    frameData.imgOn.ImageTransparency = 1
+                    frameData.imgOff.ImageTransparency = 1
+                    warn(string.format("    Resetting sub-toggle %d icons to transparent before collapse", i))
+                end
+                
                 TweenService:Create(frameData.label, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), 
                     {TextTransparency = 1}):Play()
                 TweenService:Create(frameData.track, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), 
