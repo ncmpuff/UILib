@@ -1212,8 +1212,9 @@ function UILib:CreateCollapsibleToggle(panel, config)
         TweenService:Create(arrowButton, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
             {Rotation = isExpanded and 90 or 0}):Play()
         
-        -- Find all elements below this toggle
-        local mainToggleY = y
+        -- CRITICAL FIX: Use CURRENT Y position from the actual label, not the stored y value
+        -- This handles cases where other toggles have shifted this toggle's position
+        local mainToggleY = label.Position.Y.Offset
         local elementsToShift = {}
         
         warn(string.format("  Searching for elements below Y=%d (mainToggle + 50 = %d)", mainToggleY, mainToggleY + 50))
