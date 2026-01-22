@@ -1176,10 +1176,13 @@ function UILib:CreateCollapsibleToggle(panel, config)
 
         subButton.MouseButton1Click:Connect(subToggle)
 
-        -- Store all elements for this sub-toggle
+        -- Store all elements for this sub-toggle INCLUDING ICON REFERENCES
         table.insert(subFrames, {
             label = subLabel,
             track = subTrack,
+            imgOn = subImgOn,  -- CRITICAL: Store icon references
+            imgOff = subImgOff,
+            getState = function() return subState end,  -- Store state getter
             yPosition = subY
         })
 
@@ -1224,26 +1227,22 @@ function UILib:CreateCollapsibleToggle(panel, config)
                 frameData.label.Parent = panel.ScrollingFrame
                 frameData.track.Parent = panel.ScrollingFrame
                 
-                -- CRITICAL FIX: Find the icons inside the track and reset their transparency
-                -- based on the sub-toggle's current state before fading in
-                local ballBg = frameData.track:FindFirstChildOfClass("Frame")
-                if ballBg then
-                    local imgOn = ballBg:FindFirstChild("ImgOn")
-                    local imgOff = ballBg:FindFirstChild("ImgOff")
+                -- CRITICAL FIX: Use stored references instead of searching
+                -- This prevents accidentally finding the parent toggle's icons!
+                if frameData.imgOn and frameData.imgOff and frameData.getState then
+                    -- Make sure both are visible
+                    frameData.imgOn.Visible = true
+                    frameData.imgOff.Visible = true
                     
-                    if imgOn and imgOff then
-                        -- Make sure both are visible but set correct transparency
-                        imgOn.Visible = true
-                        imgOff.Visible = true
-                        
-                        -- Determine current state from ball position or track color
-                        local isOn = frameData.track.BackgroundColor3 == UILib.Colors.JPUFF_HOT_PINK
-                        imgOn.ImageTransparency = isOn and 0 or 1
-                        imgOff.ImageTransparency = isOn and 1 or 0
-                        
-                        warn(string.format("    Reset sub-toggle %d icons: isOn=%s, imgOn.Trans=%s, imgOff.Trans=%s",
-                            i, tostring(isOn), tostring(imgOn.ImageTransparency), tostring(imgOff.ImageTransparency)))
-                    end
+                    -- Get current state and set correct transparency
+                    local currentState = frameData.getState()
+                    frameData.imgOn.ImageTransparency = currentState and 0 or 1
+                    frameData.imgOff.ImageTransparency = currentState and 1 or 0
+                    
+                    warn(string.format("    Reset sub-toggle %d: state=%s, imgOn.Trans=%s, imgOff.Trans=%s",
+                        i, tostring(currentState), 
+                        tostring(frameData.imgOn.ImageTransparency), 
+                        tostring(frameData.imgOff.ImageTransparency)))
                 end
                 
                 -- Fade in animation
