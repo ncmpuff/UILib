@@ -1,0 +1,13 @@
+-- ═══════════════════════════════════════════════════════
+-- ROOM TELEPORT DROPDOWN - READY TO USE
+-- ═══════════════════════════════════════════════════════
+-- Copy this code and paste it in the Player Panel section of rbreachv4.36.lua
+-- (Place it after other dropdowns/buttons in PlayerPanel)
+
+UILib:CreateDropdown(PlayerPanel, {
+    Label = "Room Teleport",
+    Options = {"Class D Cells", "Entrance Zone", "914", "Heavy Containment Zone", "Gate A", "Gate B", "Gate A Surface", "Gate B Surface", "Alpha Warhead"},
+    Callback = function(selected)
+        teleportToRoom(selected)
+    end
+})
