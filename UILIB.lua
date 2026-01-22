@@ -832,11 +832,9 @@ function UILib:CreateToggle(panel, config)
 
         state = not state
 
-        -- Enable both and force start values
+        -- GUARANTEED FIX: Keep both icons ALWAYS visible, only animate transparency
         imgOn.Visible = true
-        imgOn.ImageTransparency = state and 1 or 0
         imgOff.Visible = true
-        imgOff.ImageTransparency = state and 0 or 1
 
         -- Animate track color
         TweenService:Create(track, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
@@ -852,7 +850,7 @@ function UILib:CreateToggle(panel, config)
         TweenService:Create(ballBg, TweenInfo.new(0.65, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), 
             {Rotation = accumulatedRotation}):Play()
 
-        -- Cross-fade images
+        -- Cross-fade images (animate transparency only)
         TweenService:Create(imgOn, TweenInfo.new(0.65, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), 
             {ImageTransparency = state and 0 or 1}):Play()
         TweenService:Create(imgOff, TweenInfo.new(0.65, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), 
@@ -860,11 +858,6 @@ function UILib:CreateToggle(panel, config)
 
         task.delay(0.65, function()
             isAnimating = false
-            if state then
-                imgOff.Visible = false
-            else
-                imgOn.Visible = false
-            end
         end)
 
         -- Call callback and check if it returns false to cancel
@@ -1128,10 +1121,9 @@ function UILib:CreateCollapsibleToggle(panel, config)
 
             subState = not subState
 
+            -- GUARANTEED FIX: Keep both icons always visible
             subImgOn.Visible = true
-            subImgOn.ImageTransparency = subState and 1 or 0
             subImgOff.Visible = true
-            subImgOff.ImageTransparency = subState and 0 or 1
 
             TweenService:Create(subTrack, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
                 {BackgroundColor3 = subState and UILib.Colors.JPUFF_HOT_PINK or UILib.Colors.TOGGLE_OFF}):Play()
@@ -1144,6 +1136,7 @@ function UILib:CreateCollapsibleToggle(panel, config)
             TweenService:Create(subBallBg, TweenInfo.new(0.65, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), 
                 {Rotation = subAccumulatedRotation}):Play()
 
+            -- Cross-fade images (animate transparency only)
             TweenService:Create(subImgOn, TweenInfo.new(0.65, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), 
                 {ImageTransparency = subState and 0 or 1}):Play()
             TweenService:Create(subImgOff, TweenInfo.new(0.65, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), 
@@ -1151,11 +1144,6 @@ function UILib:CreateCollapsibleToggle(panel, config)
 
             task.delay(0.65, function()
                 subIsAnimating = false
-                if subState then
-                    subImgOff.Visible = false
-                else
-                    subImgOn.Visible = false
-                end
             end)
 
             if subConfig.Callback then
