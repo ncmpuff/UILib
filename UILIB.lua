@@ -1244,10 +1244,25 @@ function UILib:CreateCollapsibleToggle(panel, config)
         
         if isExpanded then
             warn(string.format("  → Expanding: showing %d sub-toggles", #subFrames))
+            
+            -- CRITICAL FIX: Calculate sub-toggle positions based on parent's CURRENT position
+            -- not the stored initial position (which doesn't account for shifts)
+            local parentCurrentY = label.Position.Y.Offset
+            warn(string.format("  Parent toggle current Y: %d", parentCurrentY))
+            
             -- Show sub-toggles with animation
             for i, frameData in ipairs(subFrames) do
+                -- Calculate NEW position based on parent's current position
+                local newSubY = parentCurrentY + (i * 55)
+                
+                -- Update positions BEFORE parenting
+                frameData.label.Position = UDim2.fromOffset(60, newSubY)
+                frameData.track.Position = UDim2.fromOffset(screenWidth - sizes.ToggleTrackWidth - 15, newSubY)
+                
                 frameData.label.Parent = panel.ScrollingFrame
                 frameData.track.Parent = panel.ScrollingFrame
+                
+                warn(string.format("    Sub-toggle %d positioned at Y=%d", i, newSubY))
                 
                 -- CRITICAL FIX: Use stored references instead of searching
                 -- This prevents accidentally finding the parent toggle's icons!
