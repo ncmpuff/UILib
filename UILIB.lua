@@ -1202,6 +1202,17 @@ function UILib:CreateCollapsibleToggle(panel, config)
     -- Reset ContentY since we removed the sub-toggles
     panel.ContentY = panel.ContentY - subToggleHeight
     
+    -- CRITICAL: Register sub-toggle elements globally in the panel
+    -- This prevents other collapsible toggles from shifting these elements
+    if not panel.AllSubToggleElements then
+        panel.AllSubToggleElements = {}
+    end
+    
+    for _, frameData in ipairs(subFrames) do
+        panel.AllSubToggleElements[frameData.label] = true
+        panel.AllSubToggleElements[frameData.track] = true
+    end
+    
     -- Arrow click handler for expand/collapse
     local isExpanded = false
     arrowButton.MouseButton1Click:Connect(function()
@@ -1212,24 +1223,17 @@ function UILib:CreateCollapsibleToggle(panel, config)
         TweenService:Create(arrowButton, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
             {Rotation = isExpanded and 90 or 0}):Play()
         
-        -- CRITICAL FIX: Use CURRENT Y position from the actual label, not the stored y value
-        -- This handles cases where other toggles have shifted this toggle's position
-        local mainToggleY = label.Position.Y.Offset
+        -- Find all elements below this toggle
+        local mainToggleY = y
         local elementsToShift = {}
         
         warn(string.format("  Searching for elements below Y=%d (mainToggle + 50 = %d)", mainToggleY, mainToggleY + 50))
         
-        -- Build a set of sub-toggle elements to exclude
-        local subToggleElements = {}
-        for _, frameData in ipairs(subFrames) do
-            subToggleElements[frameData.label] = true
-            subToggleElements[frameData.track] = true
-        end
-        
         for _, child in ipairs(panel.ScrollingFrame:GetChildren()) do
             if child:IsA("GuiObject") and child.Position and child.Position.Y.Offset then
-                -- CRITICAL: Skip sub-toggle elements - they shouldn't be shifted!
-                if not subToggleElements[child] and child.Position.Y.Offset > mainToggleY + 50 then
+                -- CRITICAL: Skip ALL sub-toggle elements from ALL collapsible toggles!
+                -- This prevents cross-toggle interference
+                if not panel.AllSubToggleElements[child] and child.Position.Y.Offset > mainToggleY + 50 then
                     table.insert(elementsToShift, child)
                     warn(string.format("    Found element '%s' at Y=%d - will shift", child.Name, child.Position.Y.Offset))
                 end
