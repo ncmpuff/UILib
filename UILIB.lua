@@ -1207,6 +1207,7 @@ function UILib:CreateCollapsibleToggle(panel, config)
     
     -- Arrow click handler for expand/collapse
     local isExpanded = false
+    local isAnimating = false  -- Prevent spam-clicking
     
     -- Function to collapse THIS toggle (will be stored for auto-close)
     local function collapseThisToggle()
@@ -1271,7 +1272,15 @@ function UILib:CreateCollapsibleToggle(panel, config)
     end
     
     arrowButton.MouseButton1Click:Connect(function()
-        warn(string.format("\n⬇️ ARROW CLICKED for '%s' - isExpanded: %s → %s [VERSION:AUTO-CLOSE-v1]", labelText, tostring(isExpanded), tostring(not isExpanded)))
+        -- ANTI-SPAM: Ignore clicks while animating
+        if isAnimating then 
+            warn(string.format("⛔ CLICK IGNORED for '%s' - animation in progress", labelText))
+            return 
+        end
+        
+        isAnimating = true  -- Lock button
+        warn(string.format("\n⬇️ ARROW CLICKED for '%s' - isExpanded: %s → %s [VERSION:ANTI-SPAM-v1]", labelText, tostring(isExpanded), tostring(not isExpanded)))
+
         
         local targetState = not isExpanded
         
@@ -1301,6 +1310,13 @@ function UILib:CreateCollapsibleToggle(panel, config)
             -- Collapsing: Remove from open list and collapse
             UILib.OpenCollapsibles[toggleId] = nil
             collapseThisToggle()
+            
+            -- Unlock after collapse animation completes
+            task.delay(0.3, function()
+                isAnimating = false
+                warn(string.format("🔓 UNLOCKED '%s' after collapse", labelText))
+            end)
+            
             return  -- Exit early since collapseThisToggle handles everything
         end
         
@@ -1379,6 +1395,8 @@ function UILib:CreateCollapsibleToggle(panel, config)
         
         task.delay(0.3, function()
             panel:UpdateCanvasSize()
+            isAnimating = false  -- Unlock after expand animation completes
+            warn(string.format("🔓 UNLOCKED '%s' after expand", labelText))
         end)
     end)
 
