@@ -1217,7 +1217,15 @@ function UILib:CreateCollapsibleToggle(panel, config)
     local isExpanded = false
     arrowButton.MouseButton1Click:Connect(function()
         warn(string.format("\n⬇️ ARROW CLICKED for '%s' - isExpanded: %s → %s [VERSION:DEBUG-SHIFT-v3]", labelText, tostring(isExpanded), tostring(not isExpanded)))
+        
+        -- CRITICAL: Read current Y position BEFORE toggling or starting animations
+        -- This gives us the settled position if tweens have completed
+        local currentLabelY = label.Position.Y.Offset
+        local shiftAmount = currentLabelY - y  -- How much this toggle has been shifted from original Y
+        
         isExpanded = not isExpanded
+        
+        warn(string.format("  Label: original Y=%d, current Y=%d, shift=%d", y, currentLabelY, shiftAmount))
         
         -- Animate arrow rotation
         TweenService:Create(arrowButton, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
@@ -1245,13 +1253,22 @@ function UILib:CreateCollapsibleToggle(panel, config)
         if isExpanded then
             warn(string.format("  → Expanding: showing %d sub-toggles", #subFrames))
             
+            -- Calculate sub-toggle positions using stored Y + shift amount
+            warn(string.format("  Using shiftAmount=%d for sub-toggle positioning", shiftAmount))
+            
             -- Show sub-toggles with animation
             for i, frameData in ipairs(subFrames) do
-                -- Simply re-parent at stored position - positions will be managed by shift logic
+                -- Calculate position: original stored Y + shift amount
+                local adjustedY = frameData.yPosition + shiftAmount
+                
+                -- Update positions before parenting
+                frameData.label.Position = UDim2.fromOffset(60, adjustedY)
+                frameData.track.Position = UDim2.new(1, toggleOffset, 0, adjustedY + 2.5)
+                
                 frameData.label.Parent = panel.ScrollingFrame
                 frameData.track.Parent = panel.ScrollingFrame
                 
-                warn(string.format("    Sub-toggle %d at stored Y=%d", i, frameData.yPosition))
+                warn(string.format("    Sub-toggle %d: stored=%d, adjusted=%d", i, frameData.yPosition, adjustedY))
                 
                 -- CRITICAL FIX: Use stored references instead of searching
                 -- This prevents accidentally finding the parent toggle's icons!
@@ -1286,6 +1303,13 @@ function UILib:CreateCollapsibleToggle(panel, config)
                 local newY = element.Position.Y.Offset + subToggleHeight
                 TweenService:Create(element, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
                     {Position = UDim2.new(element.Position.X.Scale, element.Position.X.Offset, element.Position.Y.Scale, newY)}):Play()
+                
+                -- Track shift offset on shifted elements (if they have one)
+                if element == label or element == track or element == arrowButton then
+                    -- This is another collapsible toggle being shifted
+                    -- We'd need to increment its shiftOffset here, but we don't have direct access
+                    -- This is a limitation of the current approach
+                end
             end
             
             panel.ContentY = panel.ContentY + subToggleHeight
