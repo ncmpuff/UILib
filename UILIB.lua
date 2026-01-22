@@ -833,7 +833,7 @@ function UILib:CreateToggle(panel, config)
         local oldState = state
         state = not state
         
-        print(string.format("\n🔄 TOGGLE DEBUG: oldState=%s → newState=%s", tostring(oldState), tostring(state)))
+        warn(string.format("\n🔄 TOGGLE: oldState=%s → newState=%s", tostring(oldState), tostring(state)))
 
         -- Keep both icons ALWAYS visible but set correct starting transparency
         imgOn.Visible = true
@@ -843,7 +843,7 @@ function UILib:CreateToggle(panel, config)
         imgOn.ImageTransparency = oldState and 0 or 1
         imgOff.ImageTransparency = oldState and 1 or 0
         
-        print(string.format("  📍 START: imgOn.Transparency=%s, imgOff.Transparency=%s", 
+        warn(string.format("  START: imgOn.Trans=%s, imgOff.Trans=%s", 
             tostring(imgOn.ImageTransparency), tostring(imgOff.ImageTransparency)))
 
         -- Animate track color
@@ -862,7 +862,7 @@ function UILib:CreateToggle(panel, config)
 
         local targetOnTransparency = state and 0 or 1
         local targetOffTransparency = state and 1 or 0
-        print(string.format("  🎯 TARGET: imgOn.Transparency=%s, imgOff.Transparency=%s", 
+        warn(string.format("  TARGET: imgOn.Trans=%s, imgOff.Trans=%s", 
             tostring(targetOnTransparency), tostring(targetOffTransparency)))
 
         -- Animate to TARGET transparency based on NEW state (where we're going)
@@ -873,7 +873,7 @@ function UILib:CreateToggle(panel, config)
 
         task.delay(0.65, function()
             isAnimating = false
-            print(string.format("  ✅ COMPLETE: imgOn.Transparency=%s, imgOff.Transparency=%s\n", 
+            warn(string.format("  END: imgOn.Trans=%s, imgOff.Trans=%s\n", 
                 tostring(imgOn.ImageTransparency), tostring(imgOff.ImageTransparency)))
         end)
 
