@@ -1003,14 +1003,26 @@ function UILib:CreateCollapsibleToggle(panel, config)
     imgOn.Size = UDim2.fromScale(1.2, 1.2)
     imgOn.Position = UDim2.fromScale(-0.1, -0.1)
     imgOn.BackgroundTransparency = 1
-    imgOn.Image = "rbxthumb://type=Asset&id=134295051311593&w=150&h=150"
+    imgOn.Image = "rbxthumb://type=Asset&id=111028440784816&w=150&h=150"
     imgOn.ScaleType = Enum.ScaleType.Crop
     imgOn.BorderSizePixel = 0
     imgOn.ZIndex = 2
-    imgOn.ImageTransparency = initialState and 0 or 1
     Instance.new("UICorner", imgOn).CornerRadius = UDim.new(1, 0)
 
-    if not initialState then imgOn.Visible = false end
+    -- Set initial transparency - KEEP BOTH ICONS ALWAYS VISIBLE
+    -- Control visibility purely through ImageTransparency
+    imgOn.Visible = true
+    imgOff.Visible = true
+    
+    if initialState then
+        -- ON state: show imgOn, hide imgOff
+        imgOn.ImageTransparency = 0
+        imgOff.ImageTransparency = 1
+    else
+        -- OFF state: hide imgOn, show imgOff
+        imgOn.ImageTransparency = 1
+        imgOff.ImageTransparency = 0
+    end
 
     local button = Instance.new("TextButton", track)
     button.Size = UDim2.fromScale(1, 1)
