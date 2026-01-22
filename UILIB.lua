@@ -920,7 +920,7 @@ function UILib:CreateCollapsibleToggle(panel, config)
     local initialState = config.Default or false
     local callback = config.Callback or function() end
     local subToggles = config.SubToggles or {}
-    local autoCloseDelay = config.AutoCloseDelay or 0.15  -- Delay between closing others and opening this one
+    local autoCloseDelay = config.AutoCloseDelay or 0.35  -- Delay between closing others and opening this one
     local y = panel.ContentY
     
     -- Generate unique ID for this collapsible toggle
