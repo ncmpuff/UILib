@@ -6,6 +6,9 @@
 
 local UILib = {}
 
+-- Shared state for auto-closing collapsible toggles
+UILib.OpenCollapsibles = {}
+
 -- Services
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -917,7 +920,11 @@ function UILib:CreateCollapsibleToggle(panel, config)
     local initialState = config.Default or false
     local callback = config.Callback or function() end
     local subToggles = config.SubToggles or {}
+    local autoCloseDelay = config.AutoCloseDelay or 0.15  -- Delay between closing others and opening this one
     local y = panel.ContentY
+    
+    -- Generate unique ID for this collapsible toggle
+    local toggleId = tostring(panel) .. "_" .. labelText .. "_" .. tostring(y)
     
     -- Get platform-specific sizes
     local sizes = self:GetSizes()
@@ -1108,11 +1115,7 @@ function UILib:CreateCollapsibleToggle(panel, config)
         subImgOff.ScaleType = Enum.ScaleType.Crop
         subImgOff.BorderSizePixel = 0
         subImgOff.ZIndex = 2
-        subImgOff.ImageTransparency = (subConfig.Default or false) and 1 or 0
         Instance.new("UICorner", subImgOff).CornerRadius = UDim.new(1, 0)
-        
-        -- Hide unused icon initially (matching regular toggle behavior)
-        if (subConfig.Default or false) then subImgOff.Visible = false end
 
         local subImgOn = Instance.new("ImageLabel", subBallBg)
         subImgOn.Size = UDim2.fromScale(1.2, 1.2)
@@ -1202,67 +1205,126 @@ function UILib:CreateCollapsibleToggle(panel, config)
     -- Reset ContentY since we removed the sub-toggles
     panel.ContentY = panel.ContentY - subToggleHeight
     
-    -- CRITICAL: Register sub-toggle elements globally in the panel
-    -- This prevents other collapsible toggles from shifting these elements
-    if not panel.AllSubToggleElements then
-        panel.AllSubToggleElements = {}
-    end
-    
-    for _, frameData in ipairs(subFrames) do
-        panel.AllSubToggleElements[frameData.label] = true
-        panel.AllSubToggleElements[frameData.track] = true
-    end
-    
-    -- ACCORDION BEHAVIOR: Track currently expanded toggle to ensure only one is open at a time
-    if not panel.currentlyExpandedToggle then
-        panel.currentlyExpandedToggle = nil
-    end
-    
     -- Arrow click handler for expand/collapse
     local isExpanded = false
-    arrowButton.MouseButton1Click:Connect(function()
-        warn(string.format("\n⬇️ ARROW CLICKED for '%s' - isExpanded: %s → %s [VERSION:DEBUG-SHIFT-v3]", labelText, tostring(isExpanded), tostring(not isExpanded)))
+    
+    -- Function to collapse THIS toggle (will be stored for auto-close)
+    local function collapseThisToggle()
+        if not isExpanded then return end
+        isExpanded = false
         
-        -- CRITICAL: Read current Y position BEFORE toggling or starting animations
-        -- This gives us the settled position if tweens have completed
-        local currentLabelY = label.Position.Y.Offset
-        local shiftAmount = currentLabelY - y  -- How much this toggle has been shifted from original Y
-        
-        -- ACCORDION BEHAVIOR: If trying to expand and another toggle is already expanded, collapse it first
-        if not isExpanded and panel.currentlyExpandedToggle and panel.currentlyExpandedToggle ~= arrowButton then
-            warn(string.format("  → Accordion: Auto-collapsing previously expanded toggle"))
-            -- Trigger the other toggle's collapse by clicking its arrow
-            panel.currentlyExpandedToggle:GetPropertyChangedSignal("Rotation"):Wait() -- Wait for it to settle
-        end
-        
-        isExpanded = not isExpanded
-        
-        -- Update accordion tracking
-        if isExpanded then
-            panel.currentlyExpandedToggle = arrowButton
-            warn(string.format("  → This toggle is now the expanded one"))
-        else
-            panel.currentlyExpandedToggle = nil
-            warn(string.format("  → No toggle is expanded"))
-        end
-        
-        warn(string.format("  Label: original Y=%d, current Y=%d, shift=%d", y, currentLabelY, shiftAmount))
+        warn(string.format("  AUTO-CLOSING '%s'", labelText))
         
         -- Animate arrow rotation
         TweenService:Create(arrowButton, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
-            {Rotation = isExpanded and 90 or 0}):Play()
+            {Rotation = 0}):Play()
         
         -- Find all elements below this toggle
         local mainToggleY = y
         local elementsToShift = {}
         
-        warn(string.format("  Searching for elements below Y=%d (mainToggle + 50 = %d)", mainToggleY, mainToggleY + 50))
+        -- Build a set of sub-toggle elements to exclude
+        local subToggleElements = {}
+        for _, frameData in ipairs(subFrames) do
+            subToggleElements[frameData.label] = true
+            subToggleElements[frameData.track] = true
+        end
         
         for _, child in ipairs(panel.ScrollingFrame:GetChildren()) do
             if child:IsA("GuiObject") and child.Position and child.Position.Y.Offset then
-                -- CRITICAL: Skip ALL sub-toggle elements from ALL collapsible toggles!
-                -- This prevents cross-toggle interference
-                if not panel.AllSubToggleElements[child] and child.Position.Y.Offset > mainToggleY + 50 then
+                if not subToggleElements[child] and child.Position.Y.Offset > mainToggleY + 50 then
+                    table.insert(elementsToShift, child)
+                end
+            end
+        end
+        
+        -- Hide sub-toggles with animation
+        for i, frameData in ipairs(subFrames) do
+            if frameData.imgOn and frameData.imgOff then
+                frameData.imgOn.ImageTransparency = 1
+                frameData.imgOff.ImageTransparency = 1
+            end
+            
+            TweenService:Create(frameData.label, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), 
+                {TextTransparency = 1}):Play()
+            TweenService:Create(frameData.track, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), 
+                {BackgroundTransparency = 1}):Play()
+            
+            task.delay(0.2, function()
+                frameData.label.Parent = nil
+                frameData.track.Parent = nil
+            end)
+        end
+        
+        -- Shift elements up
+        for _, element in ipairs(elementsToShift) do
+            local newY = element.Position.Y.Offset - subToggleHeight
+            TweenService:Create(element, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
+                {Position = UDim2.new(element.Position.X.Scale, element.Position.X.Offset, element.Position.Y.Scale, newY)}):Play()
+        end
+        
+        panel.ContentY = panel.ContentY - subToggleHeight
+        
+        task.delay(0.3, function()
+            panel:UpdateCanvasSize()
+        end)
+    end
+    
+    arrowButton.MouseButton1Click:Connect(function()
+        warn(string.format("\n⬇️ ARROW CLICKED for '%s' - isExpanded: %s → %s [VERSION:AUTO-CLOSE-v1]", labelText, tostring(isExpanded), tostring(not isExpanded)))
+        
+        local targetState = not isExpanded
+        
+        if targetState then
+            -- Expanding: First auto-close all other collapsible toggles
+            local otherToggles = {}
+            for otherId, otherCollapse in pairs(UILib.OpenCollapsibles) do
+                if otherId ~= toggleId then
+                    table.insert(otherToggles, otherCollapse)
+                end
+            end
+            
+            if #otherToggles > 0 then
+                warn(string.format("  Closing %d other toggle(s) first...", #otherToggles))
+                for _, otherCollapse in ipairs(otherToggles) do
+                    otherCollapse()
+                end
+                
+                -- Wait for the auto-close delay before expanding this one
+                task.wait(autoCloseDelay)
+            end
+            
+            -- Now expand THIS toggle
+            isExpanded = true
+            UILib.OpenCollapsibles[toggleId] = collapseThisToggle
+        else
+            -- Collapsing: Remove from open list and collapse
+            UILib.OpenCollapsibles[toggleId] = nil
+            collapseThisToggle()
+            return  -- Exit early since collapseThisToggle handles everything
+        end
+        
+        -- Animate arrow rotation for expansion
+        TweenService:Create(arrowButton, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
+            {Rotation = isExpanded and 90 or 0}):Play()
+        
+        -- Find all elements below this toggle for shifting
+        local mainToggleY = y
+        local elementsToShift = {}
+        
+        warn(string.format("  Searching for elements below Y=%d (mainToggle + 50 = %d)", mainToggleY, mainToggleY + 50))
+        
+        -- Build a set of sub-toggle elements to exclude
+        local subToggleElements = {}
+        for _, frameData in ipairs(subFrames) do
+            subToggleElements[frameData.label] = true
+            subToggleElements[frameData.track] = true
+        end
+        
+        for _, child in ipairs(panel.ScrollingFrame:GetChildren()) do
+            if child:IsA("GuiObject") and child.Position and child.Position.Y.Offset then
+                -- CRITICAL: Skip sub-toggle elements - they shouldn't be shifted!
+                if not subToggleElements[child] and child.Position.Y.Offset > mainToggleY + 50 then
                     table.insert(elementsToShift, child)
                     warn(string.format("    Found element '%s' at Y=%d - will shift", child.Name, child.Position.Y.Offset))
                 end
@@ -1270,101 +1332,50 @@ function UILib:CreateCollapsibleToggle(panel, config)
         end
         
         warn(string.format("  Total elements to shift: %d", #elementsToShift))
+        warn(string.format("  → Expanding: showing %d sub-toggles", #subFrames))
         
-        if isExpanded then
-            warn(string.format("  → Expanding: showing %d sub-toggles", #subFrames))
+        -- Show sub-toggles with animation
+        for i, frameData in ipairs(subFrames) do
+            frameData.label.Parent = panel.ScrollingFrame
+            frameData.track.Parent = panel.ScrollingFrame
             
-            -- Calculate sub-toggle positions RELATIVE to parent's current position
-            warn(string.format("  Parent at currentY=%d, positioning sub-toggles relative to parent", currentLabelY))
-            
-            -- Show sub-toggles with animation
-            for i, frameData in ipairs(subFrames) do
-                -- Calculate position RELATIVE to parent: parentY + (index * 55)
-                local adjustedY = currentLabelY + (i * 55)
+            -- CRITICAL FIX: Use stored references instead of searching
+            -- This prevents accidentally finding the parent toggle's icons!
+            if frameData.imgOn and frameData.imgOff and frameData.getState then
+                -- Make sure both are visible
+                frameData.imgOn.Visible = true
+                frameData.imgOff.Visible = true
                 
-                -- Update positions before parenting
-                frameData.label.Position = UDim2.fromOffset(60, adjustedY)
-                frameData.track.Position = UDim2.new(1, toggleOffset, 0, adjustedY + 2.5)
+                -- Get current state and set correct transparency
+                local currentState = frameData.getState()
+                frameData.imgOn.ImageTransparency = currentState and 0 or 1
+                frameData.imgOff.ImageTransparency = currentState and 1 or 0
                 
-                frameData.label.Parent = panel.ScrollingFrame
-                frameData.track.Parent = panel.ScrollingFrame
-                
-                warn(string.format("    Sub-toggle %d: relative position Y=%d", i, adjustedY))
-                
-                -- CRITICAL FIX: Use stored references instead of searching
-                -- This prevents accidentally finding the parent toggle's icons!
-                if frameData.imgOn and frameData.imgOff and frameData.getState then
-                    -- Make sure both are visible
-                    frameData.imgOn.Visible = true
-                    frameData.imgOff.Visible = true
-                    
-                    -- Get current state and set correct transparency
-                    local currentState = frameData.getState()
-                    frameData.imgOn.ImageTransparency = currentState and 0 or 1
-                    frameData.imgOff.ImageTransparency = currentState and 1 or 0
-                    
-                    warn(string.format("    Reset sub-toggle %d: state=%s, imgOn.Trans=%s, imgOff.Trans=%s",
-                        i, tostring(currentState), 
-                        tostring(frameData.imgOn.ImageTransparency), 
-                        tostring(frameData.imgOff.ImageTransparency)))
-                end
-                
-                -- Fade in animation
-                frameData.label.TextTransparency = 1
-                frameData.track.BackgroundTransparency = 1
-                
-                TweenService:Create(frameData.label, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
-                    {TextTransparency = 0}):Play()
-                TweenService:Create(frameData.track, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
-                    {BackgroundTransparency = 0}):Play()
+                warn(string.format("    Reset sub-toggle %d: state=%s, imgOn.Trans=%s, imgOff.Trans=%s",
+                    i, tostring(currentState), 
+                    tostring(frameData.imgOn.ImageTransparency), 
+                    tostring(frameData.imgOff.ImageTransparency)))
             end
             
-            -- Shift elements down
-            for _, element in ipairs(elementsToShift) do
-                local newY = element.Position.Y.Offset + subToggleHeight
-                TweenService:Create(element, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
-                    {Position = UDim2.new(element.Position.X.Scale, element.Position.X.Offset, element.Position.Y.Scale, newY)}):Play()
-                
-                -- Track shift offset on shifted elements (if they have one)
-                if element == label or element == track or element == arrowButton then
-                    -- This is another collapsible toggle being shifted
-                    -- We'd need to increment its shiftOffset here, but we don't have direct access
-                    -- This is a limitation of the current approach
-                end
-            end
+            -- Fade in animation
+            frameData.label.TextTransparency = 1
+            frameData.track.BackgroundTransparency = 1
             
-            panel.ContentY = panel.ContentY + subToggleHeight
-        else
-            warn("  → Collapsing: hiding sub-toggles")
-            -- Hide sub-toggles with animation
-            for i, frameData in ipairs(subFrames) do
-                -- IMPORTANT: Before hiding, reset icon transparency to ensure clean re-expand
-                if frameData.imgOn and frameData.imgOff then
-                    frameData.imgOn.ImageTransparency = 1
-                    frameData.imgOff.ImageTransparency = 1
-                    warn(string.format("    Resetting sub-toggle %d icons to transparent before collapse", i))
-                end
-                
-                TweenService:Create(frameData.label, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), 
-                    {TextTransparency = 1}):Play()
-                TweenService:Create(frameData.track, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), 
-                    {BackgroundTransparency = 1}):Play()
-                
-                task.delay(0.2, function()
-                    frameData.label.Parent = nil
-                    frameData.track.Parent = nil
-                end)
-            end
-            
-            -- Shift elements up
-            for _, element in ipairs(elementsToShift) do
-                local newY = element.Position.Y.Offset - subToggleHeight
-                TweenService:Create(element, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
-                    {Position = UDim2.new(element.Position.X.Scale, element.Position.X.Offset, element.Position.Y.Scale, newY)}):Play()
-            end
-            
-            panel.ContentY = panel.ContentY - subToggleHeight
+            TweenService:Create(frameData.label, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
+                {TextTransparency = 0}):Play()
+            TweenService:Create(frameData.track, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
+                {BackgroundTransparency = 0}):Play()
         end
+        
+        -- Shift elements down
+        for _, element in ipairs(elementsToShift) do
+            local newY = element.Position.Y.Offset + subToggleHeight
+            TweenService:Create(element, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
+                {Position = UDim2.new(element.Position.X.Scale, element.Position.X.Offset, element.Position.Y.Scale, newY)}):Play()
+        end
+        
+        panel.ContentY = panel.ContentY + subToggleHeight
+
         
         task.delay(0.3, function()
             panel:UpdateCanvasSize()
