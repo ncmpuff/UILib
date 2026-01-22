@@ -807,17 +807,19 @@ function UILib:CreateToggle(panel, config)
     imgOn.ZIndex = 2
     Instance.new("UICorner", imgOn).CornerRadius = UDim.new(1, 0)
 
-    -- Set initial visibility
+    -- Set initial transparency - KEEP BOTH ICONS ALWAYS VISIBLE
+    -- Control visibility purely through ImageTransparency
+    imgOn.Visible = true
+    imgOff.Visible = true
+    
     if initialState then
+        -- ON state: show imgOn, hide imgOff
         imgOn.ImageTransparency = 0
-        imgOn.Visible = true
         imgOff.ImageTransparency = 1
-        imgOff.Visible = false
     else
+        -- OFF state: hide imgOn, show imgOff
         imgOn.ImageTransparency = 1
-        imgOn.Visible = false
         imgOff.ImageTransparency = 0
-        imgOff.Visible = true
     end
 
     local button = Instance.new("TextButton", track)
@@ -1128,7 +1130,10 @@ function UILib:CreateCollapsibleToggle(panel, config)
         subImgOn.ImageTransparency = (subConfig.Default or false) and 0 or 1
         Instance.new("UICorner", subImgOn).CornerRadius = UDim.new(1, 0)
 
-        if not (subConfig.Default or false) then subImgOn.Visible = false end
+        -- KEEP BOTH SUB-TOGGLE ICONS ALWAYS VISIBLE
+        subImgOn.Visible = true
+        subImgOff.Visible = true
+        subImgOff.ImageTransparency = (subConfig.Default or false) and 1 or 0
 
         local subButton = Instance.new("TextButton", subTrack)
         subButton.Size = UDim2.fromScale(1, 1)
