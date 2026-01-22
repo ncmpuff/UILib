@@ -1414,7 +1414,8 @@ function UILib:CreateCollapsibleToggle(panel, config)
 
         
         -- Unlock after full expand sequence (auto-close delay + expand animation)
-        task.delay(1.3, function()
+        -- Increased to 2s to ensure second arrow cannot be clicked until first is FULLY done
+        task.delay(2, function()
             panel:UpdateCanvasSize()
             UILib.CollapsibleAnimating = false
             warn(string.format("🔓 GLOBALLY UNLOCKED after '%s' expand", labelText))
