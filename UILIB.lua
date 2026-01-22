@@ -832,6 +832,8 @@ function UILib:CreateToggle(panel, config)
 
         local oldState = state
         state = not state
+        
+        print(string.format("\n🔄 TOGGLE DEBUG: oldState=%s → newState=%s", tostring(oldState), tostring(state)))
 
         -- Keep both icons ALWAYS visible but set correct starting transparency
         imgOn.Visible = true
@@ -840,6 +842,9 @@ function UILib:CreateToggle(panel, config)
         -- Set STARTING transparency based on OLD state (where we're coming from)
         imgOn.ImageTransparency = oldState and 0 or 1
         imgOff.ImageTransparency = oldState and 1 or 0
+        
+        print(string.format("  📍 START: imgOn.Transparency=%s, imgOff.Transparency=%s", 
+            tostring(imgOn.ImageTransparency), tostring(imgOff.ImageTransparency)))
 
         -- Animate track color
         TweenService:Create(track, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
@@ -855,14 +860,21 @@ function UILib:CreateToggle(panel, config)
         TweenService:Create(ballBg, TweenInfo.new(0.65, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), 
             {Rotation = accumulatedRotation}):Play()
 
+        local targetOnTransparency = state and 0 or 1
+        local targetOffTransparency = state and 1 or 0
+        print(string.format("  🎯 TARGET: imgOn.Transparency=%s, imgOff.Transparency=%s", 
+            tostring(targetOnTransparency), tostring(targetOffTransparency)))
+
         -- Animate to TARGET transparency based on NEW state (where we're going)
         TweenService:Create(imgOn, TweenInfo.new(0.65, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), 
-            {ImageTransparency = state and 0 or 1}):Play()
+            {ImageTransparency = targetOnTransparency}):Play()
         TweenService:Create(imgOff, TweenInfo.new(0.65, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), 
-            {ImageTransparency = state and 1 or 0}):Play()
+            {ImageTransparency = targetOffTransparency}):Play()
 
         task.delay(0.65, function()
             isAnimating = false
+            print(string.format("  ✅ COMPLETE: imgOn.Transparency=%s, imgOff.Transparency=%s\n", 
+                tostring(imgOn.ImageTransparency), tostring(imgOff.ImageTransparency)))
         end)
 
         -- Call callback and check if it returns false to cancel
