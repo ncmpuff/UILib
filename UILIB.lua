@@ -1201,7 +1201,7 @@ function UILib:CreateCollapsibleToggle(panel, config)
     -- Arrow click handler for expand/collapse
     local isExpanded = false
     arrowButton.MouseButton1Click:Connect(function()
-        warn(string.format("\n⬇️ ARROW CLICKED for '%s' - isExpanded: %s → %s", labelText, tostring(isExpanded), tostring(not isExpanded)))
+        warn(string.format("\n⬇️ ARROW CLICKED for '%s' - isExpanded: %s → %s [VERSION:DEBUG-SHIFT-v3]", labelText, tostring(isExpanded), tostring(not isExpanded)))
         isExpanded = not isExpanded
         
         -- Animate arrow rotation
