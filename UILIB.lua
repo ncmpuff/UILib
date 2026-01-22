@@ -1214,9 +1214,17 @@ function UILib:CreateCollapsibleToggle(panel, config)
         
         warn(string.format("  Searching for elements below Y=%d (mainToggle + 50 = %d)", mainToggleY, mainToggleY + 50))
         
+        -- Build a set of sub-toggle elements to exclude
+        local subToggleElements = {}
+        for _, frameData in ipairs(subFrames) do
+            subToggleElements[frameData.label] = true
+            subToggleElements[frameData.track] = true
+        end
+        
         for _, child in ipairs(panel.ScrollingFrame:GetChildren()) do
             if child:IsA("GuiObject") and child.Position and child.Position.Y.Offset then
-                if child.Position.Y.Offset > mainToggleY + 50 then
+                -- CRITICAL: Skip sub-toggle elements - they shouldn't be shifted!
+                if not subToggleElements[child] and child.Position.Y.Offset > mainToggleY + 50 then
                     table.insert(elementsToShift, child)
                     warn(string.format("    Found element '%s' at Y=%d - will shift", child.Name, child.Position.Y.Offset))
                 end
