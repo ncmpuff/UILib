@@ -1108,7 +1108,11 @@ function UILib:CreateCollapsibleToggle(panel, config)
         subImgOff.ScaleType = Enum.ScaleType.Crop
         subImgOff.BorderSizePixel = 0
         subImgOff.ZIndex = 2
+        subImgOff.ImageTransparency = (subConfig.Default or false) and 1 or 0
         Instance.new("UICorner", subImgOff).CornerRadius = UDim.new(1, 0)
+        
+        -- Hide unused icon initially (matching regular toggle behavior)
+        if (subConfig.Default or false) then subImgOff.Visible = false end
 
         local subImgOn = Instance.new("ImageLabel", subBallBg)
         subImgOn.Size = UDim2.fromScale(1.2, 1.2)
