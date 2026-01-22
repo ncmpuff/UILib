@@ -830,11 +830,16 @@ function UILib:CreateToggle(panel, config)
         if isAnimating then return state end
         isAnimating = true
 
+        local oldState = state
         state = not state
 
-        -- GUARANTEED FIX: Keep both icons ALWAYS visible, only animate transparency
+        -- Keep both icons ALWAYS visible but set correct starting transparency
         imgOn.Visible = true
         imgOff.Visible = true
+        
+        -- Set STARTING transparency based on OLD state (where we're coming from)
+        imgOn.ImageTransparency = oldState and 0 or 1
+        imgOff.ImageTransparency = oldState and 1 or 0
 
         -- Animate track color
         TweenService:Create(track, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
@@ -850,7 +855,7 @@ function UILib:CreateToggle(panel, config)
         TweenService:Create(ballBg, TweenInfo.new(0.65, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), 
             {Rotation = accumulatedRotation}):Play()
 
-        -- Cross-fade images (animate transparency only)
+        -- Animate to TARGET transparency based on NEW state (where we're going)
         TweenService:Create(imgOn, TweenInfo.new(0.65, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), 
             {ImageTransparency = state and 0 or 1}):Play()
         TweenService:Create(imgOff, TweenInfo.new(0.65, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), 
@@ -1119,11 +1124,16 @@ function UILib:CreateCollapsibleToggle(panel, config)
             if subIsAnimating then return subState end
             subIsAnimating = true
 
+            local oldSubState = subState
             subState = not subState
 
-            -- GUARANTEED FIX: Keep both icons always visible
+            -- Keep both icons always visible but set correct starting transparency
             subImgOn.Visible = true
             subImgOff.Visible = true
+            
+            -- Set STARTING transparency based on OLD state
+            subImgOn.ImageTransparency = oldSubState and 0 or 1
+            subImgOff.ImageTransparency = oldSubState and 1 or 0
 
             TweenService:Create(subTrack, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
                 {BackgroundColor3 = subState and UILib.Colors.JPUFF_HOT_PINK or UILib.Colors.TOGGLE_OFF}):Play()
@@ -1136,7 +1146,7 @@ function UILib:CreateCollapsibleToggle(panel, config)
             TweenService:Create(subBallBg, TweenInfo.new(0.65, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), 
                 {Rotation = subAccumulatedRotation}):Play()
 
-            -- Cross-fade images (animate transparency only)
+            -- Animate to TARGET transparency based on NEW state
             TweenService:Create(subImgOn, TweenInfo.new(0.65, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), 
                 {ImageTransparency = subState and 0 or 1}):Play()
             TweenService:Create(subImgOff, TweenInfo.new(0.65, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), 
