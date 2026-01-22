@@ -1212,13 +1212,18 @@ function UILib:CreateCollapsibleToggle(panel, config)
         local mainToggleY = y
         local elementsToShift = {}
         
+        warn(string.format("  Searching for elements below Y=%d (mainToggle + 50 = %d)", mainToggleY, mainToggleY + 50))
+        
         for _, child in ipairs(panel.ScrollingFrame:GetChildren()) do
             if child:IsA("GuiObject") and child.Position and child.Position.Y.Offset then
                 if child.Position.Y.Offset > mainToggleY + 50 then
                     table.insert(elementsToShift, child)
+                    warn(string.format("    Found element '%s' at Y=%d - will shift", child.Name, child.Position.Y.Offset))
                 end
             end
         end
+        
+        warn(string.format("  Total elements to shift: %d", #elementsToShift))
         
         if isExpanded then
             warn(string.format("  → Expanding: showing %d sub-toggles", #subFrames))
