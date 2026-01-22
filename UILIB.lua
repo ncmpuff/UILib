@@ -1213,6 +1213,11 @@ function UILib:CreateCollapsibleToggle(panel, config)
         panel.AllSubToggleElements[frameData.track] = true
     end
     
+    -- ACCORDION BEHAVIOR: Track currently expanded toggle to ensure only one is open at a time
+    if not panel.currentlyExpandedToggle then
+        panel.currentlyExpandedToggle = nil
+    end
+    
     -- Arrow click handler for expand/collapse
     local isExpanded = false
     arrowButton.MouseButton1Click:Connect(function()
@@ -1223,7 +1228,23 @@ function UILib:CreateCollapsibleToggle(panel, config)
         local currentLabelY = label.Position.Y.Offset
         local shiftAmount = currentLabelY - y  -- How much this toggle has been shifted from original Y
         
+        -- ACCORDION BEHAVIOR: If trying to expand and another toggle is already expanded, collapse it first
+        if not isExpanded and panel.currentlyExpandedToggle and panel.currentlyExpandedToggle ~= arrowButton then
+            warn(string.format("  → Accordion: Auto-collapsing previously expanded toggle"))
+            -- Trigger the other toggle's collapse by clicking its arrow
+            panel.currentlyExpandedToggle:GetPropertyChangedSignal("Rotation"):Wait() -- Wait for it to settle
+        end
+        
         isExpanded = not isExpanded
+        
+        -- Update accordion tracking
+        if isExpanded then
+            panel.currentlyExpandedToggle = arrowButton
+            warn(string.format("  → This toggle is now the expanded one"))
+        else
+            panel.currentlyExpandedToggle = nil
+            warn(string.format("  → No toggle is expanded"))
+        end
         
         warn(string.format("  Label: original Y=%d, current Y=%d, shift=%d", y, currentLabelY, shiftAmount))
         
