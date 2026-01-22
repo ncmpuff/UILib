@@ -1198,6 +1198,7 @@ function UILib:CreateCollapsibleToggle(panel, config)
     -- Arrow click handler for expand/collapse
     local isExpanded = false
     arrowButton.MouseButton1Click:Connect(function()
+        warn(string.format("\n⬇️ ARROW CLICKED for '%s' - isExpanded: %s → %s", labelText, tostring(isExpanded), tostring(not isExpanded)))
         isExpanded = not isExpanded
         
         -- Animate arrow rotation
@@ -1217,10 +1218,33 @@ function UILib:CreateCollapsibleToggle(panel, config)
         end
         
         if isExpanded then
+            warn(string.format("  → Expanding: showing %d sub-toggles", #subFrames))
             -- Show sub-toggles with animation
             for i, frameData in ipairs(subFrames) do
                 frameData.label.Parent = panel.ScrollingFrame
                 frameData.track.Parent = panel.ScrollingFrame
+                
+                -- CRITICAL FIX: Find the icons inside the track and reset their transparency
+                -- based on the sub-toggle's current state before fading in
+                local ballBg = frameData.track:FindFirstChildOfClass("Frame")
+                if ballBg then
+                    local imgOn = ballBg:FindFirstChild("ImgOn")
+                    local imgOff = ballBg:FindFirstChild("ImgOff")
+                    
+                    if imgOn and imgOff then
+                        -- Make sure both are visible but set correct transparency
+                        imgOn.Visible = true
+                        imgOff.Visible = true
+                        
+                        -- Determine current state from ball position or track color
+                        local isOn = frameData.track.BackgroundColor3 == UILib.Colors.JPUFF_HOT_PINK
+                        imgOn.ImageTransparency = isOn and 0 or 1
+                        imgOff.ImageTransparency = isOn and 1 or 0
+                        
+                        warn(string.format("    Reset sub-toggle %d icons: isOn=%s, imgOn.Trans=%s, imgOff.Trans=%s",
+                            i, tostring(isOn), tostring(imgOn.ImageTransparency), tostring(imgOff.ImageTransparency)))
+                    end
+                end
                 
                 -- Fade in animation
                 frameData.label.TextTransparency = 1
