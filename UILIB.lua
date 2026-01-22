@@ -1255,9 +1255,9 @@ function UILib:CreateCollapsibleToggle(panel, config)
                 -- Calculate NEW position based on parent's current position
                 local newSubY = parentCurrentY + (i * 55)
                 
-                -- Update positions BEFORE parenting
+                -- Update positions BEFORE parenting (using correct UDim2 format)
                 frameData.label.Position = UDim2.fromOffset(60, newSubY)
-                frameData.track.Position = UDim2.fromOffset(screenWidth - sizes.ToggleTrackWidth - 15, newSubY)
+                frameData.track.Position = UDim2.new(1, toggleOffset, 0, newSubY + 2.5)
                 
                 frameData.label.Parent = panel.ScrollingFrame
                 frameData.track.Parent = panel.ScrollingFrame
