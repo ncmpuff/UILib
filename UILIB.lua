@@ -867,7 +867,18 @@ function UILib:CreateToggle(panel, config)
             end
         end)
 
-        callback(state)
+        -- Call callback and check if it returns false to cancel
+        local result = callback(state)
+        if result == false then
+            -- Callback canceled, revert state immediately
+            state = not state
+            -- Instantly set visuals to match reverted state
+            task.wait(0.05)
+            track.BackgroundColor3 = state and UILib.Colors.JPUFF_HOT_PINK or UILib.Colors.TOGGLE_OFF
+            ballBg.Position = state and UDim2.fromOffset(70, 20) or UDim2.fromOffset(20, 20)
+            imgOn.ImageTransparency = state and 0 or 1
+            imgOff.ImageTransparency = state and 1 or 0
+        end
         return state
     end
 
@@ -882,6 +893,391 @@ function UILib:CreateToggle(panel, config)
         SetState = function(newState)
             if newState ~= state then
                 toggle()
+            end
+        end
+    }
+end
+
+-- =====================================================
+-- COLLAPSIBLE TOGGLE
+-- =====================================================
+function UILib:CreateCollapsibleToggle(panel, config)
+    config = config or {}
+    local labelText = config.Label or "Toggle"
+    local initialState = config.Default or false
+    local callback = config.Callback or function() end
+    local subToggles = config.SubToggles or {}
+    local y = panel.ContentY
+    
+    -- Get platform-specific sizes
+    local sizes = self:GetSizes()
+    
+    -- Calculate responsive label width
+    local arrowWidth = 40
+    local labelLeftMargin = 30 + arrowWidth  -- Space for arrow
+    local toggleRightMargin = 15
+    local labelToggleSpacing = 10
+    local totalToggleSpace = sizes.ToggleTrackWidth + toggleRightMargin + labelToggleSpacing
+    
+    -- Create arrow button
+    local arrowButton = Instance.new("TextButton", panel.ScrollingFrame)
+    arrowButton.Size = UDim2.fromOffset(30, 45)
+    arrowButton.Position = UDim2.fromOffset(5, y)
+    arrowButton.BackgroundTransparency = 1
+    arrowButton.Text = "▶"
+    arrowButton.TextColor3 = UILib.Colors.JPUFF_HOT_PINK
+    arrowButton.Font = Enum.Font.GothamBold
+    arrowButton.TextSize = 16
+    arrowButton.ZIndex = 10
+    arrowButton.AutoButtonColor = false
+    
+    -- Create main toggle label
+    local label = Instance.new("TextLabel", panel.ScrollingFrame)
+    label.Size = UDim2.new(1, -(labelLeftMargin + totalToggleSpace), 0, 45)
+    label.Position = UDim2.fromOffset(labelLeftMargin, y)
+    label.BackgroundTransparency = 1
+    label.Text = labelText
+    label.Font = Enum.Font.GothamMedium
+    label.TextSize = sizes.LabelTextSize
+    label.TextColor3 = UILib.Colors.TEXT_PRIMARY
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.TextYAlignment = Enum.TextYAlignment.Center
+    label.TextTransparency = 0
+
+    -- Create toggle track
+    local toggleRightMargin = 15
+    local toggleOffset = -(sizes.ToggleTrackWidth + toggleRightMargin)
+    
+    local track = Instance.new("Frame", panel.ScrollingFrame)
+    track.Size = UDim2.fromOffset(sizes.ToggleTrackWidth, sizes.ToggleTrackHeight)
+    track.Position = UDim2.new(1, toggleOffset, 0, y + 2.5)
+    track.BackgroundColor3 = initialState and UILib.Colors.JPUFF_HOT_PINK or UILib.Colors.TOGGLE_OFF
+    track.BorderSizePixel = 0
+    track.BackgroundTransparency = 0
+    Instance.new("UICorner", track).CornerRadius = UDim.new(1, 0)
+
+    local ballBg = Instance.new("Frame", track)
+    ballBg.Size = UDim2.fromOffset(sizes.ToggleBallSize, sizes.ToggleBallSize)
+    ballBg.AnchorPoint = Vector2.new(0.5, 0.5)
+    local ballOffOn = sizes.ToggleTrackWidth - (sizes.ToggleBallSize / 2) - 3
+    local ballOffOff = sizes.ToggleBallSize / 2 + 3
+    ballBg.Position = initialState and UDim2.fromOffset(ballOffOn, sizes.ToggleTrackHeight / 2) or UDim2.fromOffset(ballOffOff, sizes.ToggleTrackHeight / 2)
+    ballBg.BackgroundColor3 = UILib.Colors.TOGGLE_OFF
+    ballBg.BackgroundTransparency = 1
+    ballBg.BorderSizePixel = 0
+    Instance.new("UICorner", ballBg).CornerRadius = UDim.new(1, 0)
+
+    -- Toggle images
+    local imgOff = Instance.new("ImageLabel", ballBg)
+    imgOff.Name = "ImgOff"
+    imgOff.Size = UDim2.fromScale(1.2, 1.2)
+    imgOff.Position = UDim2.fromScale(-0.1, -0.1)
+    imgOff.BackgroundTransparency = 1
+    imgOff.Image = "rbxthumb://type=Asset&id=134295060007569&w=150&h=150"
+    imgOff.ScaleType = Enum.ScaleType.Crop
+    imgOff.BorderSizePixel = 0
+    imgOff.ZIndex = 2
+    Instance.new("UICorner", imgOff).CornerRadius = UDim.new(1, 0)
+
+    local imgOn = Instance.new("ImageLabel", ballBg)
+    imgOn.Name = "ImgOn"
+    imgOn.Size = UDim2.fromScale(1.2, 1.2)
+    imgOn.Position = UDim2.fromScale(-0.1, -0.1)
+    imgOn.BackgroundTransparency = 1
+    imgOn.Image = "rbxthumb://type=Asset&id=134295051311593&w=150&h=150"
+    imgOn.ScaleType = Enum.ScaleType.Crop
+    imgOn.BorderSizePixel = 0
+    imgOn.ZIndex = 2
+    imgOn.ImageTransparency = initialState and 0 or 1
+    Instance.new("UICorner", imgOn).CornerRadius = UDim.new(1, 0)
+
+    if not initialState then imgOn.Visible = false end
+
+    local button = Instance.new("TextButton", track)
+    button.Size = UDim2.fromScale(1, 1)
+    button.BackgroundTransparency = 1
+    button.Text = ""
+
+    local state = initialState
+    local accumulatedRotation = 0
+    local isAnimating = false
+
+    local function toggle()
+        if isAnimating then return state end
+        isAnimating = true
+
+        state = not state
+
+        imgOn.Visible = true
+        imgOn.ImageTransparency = state and 1 or 0
+        imgOff.Visible = true
+        imgOff.ImageTransparency = state and 0 or 1
+
+        TweenService:Create(track, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
+            {BackgroundColor3 = state and UILib.Colors.JPUFF_HOT_PINK or UILib.Colors.TOGGLE_OFF}):Play()
+
+        TweenService:Create(ballBg, TweenInfo.new(0.65, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), 
+            {Position = state and UDim2.fromOffset(ballOffOn, sizes.ToggleTrackHeight / 2) or UDim2.fromOffset(ballOffOff, sizes.ToggleTrackHeight / 2)}):Play()
+
+        local rotationChange = state and 360 or -360
+        accumulatedRotation = accumulatedRotation + rotationChange
+        TweenService:Create(ballBg, TweenInfo.new(0.65, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), 
+            {Rotation = accumulatedRotation}):Play()
+
+        TweenService:Create(imgOn, TweenInfo.new(0.65, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), 
+            {ImageTransparency = state and 0 or 1}):Play()
+        TweenService:Create(imgOff, TweenInfo.new(0.65, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), 
+            {ImageTransparency = state and 1 or 0}):Play()
+
+        task.delay(0.65, function()
+            isAnimating = false
+            if state then
+                imgOff.Visible = false
+            else
+                imgOn.Visible = false
+            end
+        end)
+
+        local result = callback(state)
+        if result == false then
+            state = not state
+            task.wait(0.05)
+            track.BackgroundColor3 = state and UILib.Colors.JPUFF_HOT_PINK or UILib.Colors.TOGGLE_OFF
+            ballBg.Position = state and UDim2.fromOffset(ballOffOn, sizes.ToggleTrackHeight / 2) or UDim2.fromOffset(ballOffOff, sizes.ToggleTrackHeight / 2)
+            imgOn.ImageTransparency = state and 0 or 1
+            imgOff.ImageTransparency = state and 1 or 0
+        end
+        return state
+    end
+
+    button.MouseButton1Click:Connect(toggle)
+
+    -- Move ContentY forward for main toggle
+    panel.ContentY = panel.ContentY + 55
+    
+    -- Create sub-toggles (initially removed from parent)
+    local subFrames = {}
+    local subToggleHeight = #subToggles * 55
+    
+    for _, subConfig in ipairs(subToggles) do
+        local subY = panel.ContentY
+        local subLabel = Instance.new("TextLabel", panel.ScrollingFrame)
+        subLabel.Size = UDim2.new(1, -(60 + totalToggleSpace), 0, 45)
+        subLabel.Position = UDim2.fromOffset(60, subY)  -- Indented
+        subLabel.BackgroundTransparency = 1
+        subLabel.Text = subConfig.Label or "Sub-Toggle"
+        subLabel.Font = Enum.Font.GothamMedium
+        subLabel.TextSize = sizes.LabelTextSize - 2
+        subLabel.TextColor3 = UILib.Colors.TEXT_SECONDARY
+        subLabel.TextXAlignment = Enum.TextXAlignment.Left
+        subLabel.TextYAlignment = Enum.TextYAlignment.Center
+        subLabel.TextTransparency = 0
+
+        local subTrack = Instance.new("Frame", panel.ScrollingFrame)
+        subTrack.Size = UDim2.fromOffset(sizes.ToggleTrackWidth, sizes.ToggleTrackHeight)
+        subTrack.Position = UDim2.new(1, toggleOffset, 0, subY + 2.5)
+        subTrack.BackgroundColor3 = (subConfig.Default or false) and UILib.Colors.JPUFF_HOT_PINK or UILib.Colors.TOGGLE_OFF
+        subTrack.BorderSizePixel = 0
+        subTrack.BackgroundTransparency = 0
+        Instance.new("UICorner", subTrack).CornerRadius = UDim.new(1, 0)
+
+        local subBallBg = Instance.new("Frame", subTrack)
+        subBallBg.Size = UDim2.fromOffset(sizes.ToggleBallSize, sizes.ToggleBallSize)
+        subBallBg.AnchorPoint = Vector2.new(0.5, 0.5)
+        subBallBg.Position = (subConfig.Default or false) and UDim2.fromOffset(ballOffOn, sizes.ToggleTrackHeight / 2) or UDim2.fromOffset(ballOffOff, sizes.ToggleTrackHeight / 2)
+        subBallBg.BackgroundColor3 = UILib.Colors.TOGGLE_OFF
+        subBallBg.BackgroundTransparency = 1
+        subBallBg.BorderSizePixel = 0
+        Instance.new("UICorner", subBallBg).CornerRadius = UDim.new(1, 0)
+
+        local subImgOff = Instance.new("ImageLabel", subBallBg)
+        subImgOff.Size = UDim2.fromScale(1.2, 1.2)
+        subImgOff.Position = UDim2.fromScale(-0.1, -0.1)
+        subImgOff.BackgroundTransparency = 1
+        subImgOff.Image = "rbxthumb://type=Asset&id=134295060007569&w=150&h=150"
+        subImgOff.ScaleType = Enum.ScaleType.Crop
+        subImgOff.BorderSizePixel = 0
+        subImgOff.ZIndex = 2
+        Instance.new("UICorner", subImgOff).CornerRadius = UDim.new(1, 0)
+
+        local subImgOn = Instance.new("ImageLabel", subBallBg)
+        subImgOn.Size = UDim2.fromScale(1.2, 1.2)
+        subImgOn.Position = UDim2.fromScale(-0.1, -0.1)
+        subImgOn.BackgroundTransparency = 1
+        subImgOn.Image = "rbxthumb://type=Asset&id=134295051311593&w=150&h=150"
+        subImgOn.ScaleType = Enum.ScaleType.Crop
+        subImgOn.BorderSizePixel = 0
+        subImgOn.ZIndex = 2
+        subImgOn.ImageTransparency = (subConfig.Default or false) and 0 or 1
+        Instance.new("UICorner", subImgOn).CornerRadius = UDim.new(1, 0)
+
+        if not (subConfig.Default or false) then subImgOn.Visible = false end
+
+        local subButton = Instance.new("TextButton", subTrack)
+        subButton.Size = UDim2.fromScale(1, 1)
+        subButton.BackgroundTransparency = 1
+        subButton.Text = ""
+
+        local subState = subConfig.Default or false
+        local subAccumulatedRotation = 0
+        local subIsAnimating = false
+
+        local function subToggle()
+            if subIsAnimating then return subState end
+            subIsAnimating = true
+
+            subState = not subState
+
+            subImgOn.Visible = true
+            subImgOn.ImageTransparency = subState and 1 or 0
+            subImgOff.Visible = true
+            subImgOff.ImageTransparency = subState and 0 or 1
+
+            TweenService:Create(subTrack, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
+                {BackgroundColor3 = subState and UILib.Colors.JPUFF_HOT_PINK or UILib.Colors.TOGGLE_OFF}):Play()
+
+            TweenService:Create(subBallBg, TweenInfo.new(0.65, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), 
+                {Position = subState and UDim2.fromOffset(ballOffOn, sizes.ToggleTrackHeight / 2) or UDim2.fromOffset(ballOffOff, sizes.ToggleTrackHeight / 2)}):Play()
+
+            local subRotationChange = subState and 360 or -360
+            subAccumulatedRotation = subAccumulatedRotation + subRotationChange
+            TweenService:Create(subBallBg, TweenInfo.new(0.65, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), 
+                {Rotation = subAccumulatedRotation}):Play()
+
+            TweenService:Create(subImgOn, TweenInfo.new(0.65, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), 
+                {ImageTransparency = subState and 0 or 1}):Play()
+            TweenService:Create(subImgOff, TweenInfo.new(0.65, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), 
+                {ImageTransparency = subState and 1 or 0}):Play()
+
+            task.delay(0.65, function()
+                subIsAnimating = false
+                if subState then
+                    subImgOff.Visible = false
+                else
+                    subImgOn.Visible = false
+                end
+            end)
+
+            if subConfig.Callback then
+                subConfig.Callback(subState)
+            end
+            return subState
+        end
+
+        subButton.MouseButton1Click:Connect(subToggle)
+
+        -- Store all elements for this sub-toggle
+        table.insert(subFrames, {
+            label = subLabel,
+            track = subTrack,
+            yPosition = subY
+        })
+
+        panel.ContentY = panel.ContentY + 55
+    end
+    
+    -- Remove sub-toggles from parent initially (collapsed state)
+    for _, frameData in ipairs(subFrames) do
+        frameData.label.Parent = nil
+        frameData.track.Parent = nil
+    end
+    
+    -- Reset ContentY since we removed the sub-toggles
+    panel.ContentY = panel.ContentY - subToggleHeight
+    
+    -- Arrow click handler for expand/collapse
+    local isExpanded = false
+    arrowButton.MouseButton1Click:Connect(function()
+        isExpanded = not isExpanded
+        
+        -- Animate arrow rotation
+        TweenService:Create(arrowButton, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
+            {Rotation = isExpanded and 90 or 0}):Play()
+        
+        -- Find all elements below this toggle
+        local mainToggleY = y
+        local elementsToShift = {}
+        
+        for _, child in ipairs(panel.ScrollingFrame:GetChildren()) do
+            if child:IsA("GuiObject") and child.Position and child.Position.Y.Offset then
+                if child.Position.Y.Offset > mainToggleY + 50 then
+                    table.insert(elementsToShift, child)
+                end
+            end
+        end
+        
+        if isExpanded then
+            -- Show sub-toggles with animation
+            for i, frameData in ipairs(subFrames) do
+                frameData.label.Parent = panel.ScrollingFrame
+                frameData.track.Parent = panel.ScrollingFrame
+                
+                -- Fade in animation
+                frameData.label.TextTransparency = 1
+                frameData.track.BackgroundTransparency = 1
+                
+                TweenService:Create(frameData.label, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
+                    {TextTransparency = 0}):Play()
+                TweenService:Create(frameData.track, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
+                    {BackgroundTransparency = 0}):Play()
+            end
+            
+            -- Shift elements down
+            for _, element in ipairs(elementsToShift) do
+                local newY = element.Position.Y.Offset + subToggleHeight
+                TweenService:Create(element, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
+                    {Position = UDim2.new(element.Position.X.Scale, element.Position.X.Offset, element.Position.Y.Scale, newY)}):Play()
+            end
+            
+            panel.ContentY = panel.ContentY + subToggleHeight
+        else
+            -- Hide sub-toggles with animation
+            for i, frameData in ipairs(subFrames) do
+                TweenService:Create(frameData.label, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), 
+                    {TextTransparency = 1}):Play()
+                TweenService:Create(frameData.track, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), 
+                    {BackgroundTransparency = 1}):Play()
+                
+                task.delay(0.2, function()
+                    frameData.label.Parent = nil
+                    frameData.track.Parent = nil
+                end)
+            end
+            
+            -- Shift elements up
+            for _, element in ipairs(elementsToShift) do
+                local newY = element.Position.Y.Offset - subToggleHeight
+                TweenService:Create(element, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
+                    {Position = UDim2.new(element.Position.X.Scale, element.Position.X.Offset, element.Position.Y.Scale, newY)}):Play()
+            end
+            
+            panel.ContentY = panel.ContentY - subToggleHeight
+        end
+        
+        task.delay(0.3, function()
+            panel:UpdateCanvasSize()
+        end)
+    end)
+
+    panel:UpdateCanvasSize()
+
+    return {
+        Toggle = toggle,
+        GetState = function() return state end,
+        SetState = function(newState)
+            if newState ~= state then
+                toggle()
+            end
+        end,
+        IsExpanded = function() return isExpanded end,
+        Expand = function()
+            if not isExpanded then
+                arrowButton.MouseButton1Click:Fire()
+            end
+        end,
+        Collapse = function()
+            if isExpanded then
+                arrowButton.MouseButton1Click:Fire()
             end
         end
     }
