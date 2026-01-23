@@ -1,5 +1,5 @@
 -- =====================================================
--- JPUFF UI LIBRARY V1.0.1 (PATCHED)
+-- JPUFF UI LIBRARY V1.0.2 (CLEANED)
 -- A comprehensive UI library for creating beautiful GUIs
 -- Extracted from JPUFF GUI V26
 -- =====================================================
@@ -865,7 +865,7 @@ function UILib:CreateToggle(panel, config)
 
         local targetOnTransparency = state and 0 or 1
         local targetOffTransparency = state and 1 or 0
-            tostring(targetOnTransparency), tostring(targetOffTransparency)))
+
 
         -- Animate to TARGET transparency based on NEW state (where we're going)
         TweenService:Create(imgOn, TweenInfo.new(0.65, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), 
@@ -875,7 +875,7 @@ function UILib:CreateToggle(panel, config)
 
         task.delay(0.65, function()
             isAnimating = false
-                tostring(imgOn.ImageTransparency), tostring(imgOff.ImageTransparency)))
+
         end)
 
         -- Call callback and check if it returns false to cancel
