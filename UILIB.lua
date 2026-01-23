@@ -905,7 +905,22 @@ function UILib:CreateToggle(panel, config)
             if newState ~= state then
                 toggle()
             end
-        end
+        end,
+        -- Silent state update (for config loading) - updates UI without triggering callback
+        SetStateSilent = function(newState)
+            if newState == state then return end
+            state = newState
+            -- Instantly update visuals without animation
+            track.BackgroundColor3 = state and UILib.Colors.JPUFF_HOT_PINK or UILib.Colors.TOGGLE_OFF
+            local ballOnPos = sizes.ToggleTrackWidth - (sizes.ToggleBallSize / 2) - 3
+            local ballOffPos = sizes.ToggleBallSize / 2 + 3
+            ballBg.Position = state and UDim2.fromOffset(ballOnPos, sizes.ToggleTrackHeight / 2) or UDim2.fromOffset(ballOffPos, sizes.ToggleTrackHeight / 2)
+            imgOn.ImageTransparency = state and 0 or 1
+            imgOff.ImageTransparency = state and 1 or 0
+        end,
+        -- Direct access to track for custom styling
+        Track = track,
+        Label = label
     }
 end
 
@@ -1468,7 +1483,22 @@ function UILib:CreateButton(panel, config)
     panel.ContentY = panel.ContentY + 55
     panel:UpdateCanvasSize()
 
-    return btn
+    return {
+        Button = btn,
+        SetText = function(newText) btn.Text = newText end,
+        SetColor = function(newColor) 
+            color = newColor
+            btn.BackgroundColor3 = newColor 
+        end,
+        SetEnabled = function(enabled)
+            btn.Active = enabled
+            btn.BackgroundTransparency = enabled and 0.1 or 0.5
+        end,
+        SetCallback = function(newCallback)
+            -- Note: Old callback still connected, but new clicks will use new callback
+            callback = newCallback
+        end
+    }
 end
 
 -- =====================================================
@@ -1477,13 +1507,15 @@ end
 function UILib:CreateTextInput(panel, config)
     config = config or {}
     local placeholder = config.Placeholder or "Enter text..."
+    local defaultText = config.Default or ""
+    local callback = config.Callback or function() end
     local y = panel.ContentY
 
     local input = Instance.new("TextBox", panel.ScrollingFrame)
     input.Size = UDim2.new(1, -40, 0, 45)
     input.Position = UDim2.fromOffset(20, y)
     input.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-    input.Text = ""
+    input.Text = defaultText
     input.PlaceholderText = placeholder
     input.Font = Enum.Font.GothamBold
     input.TextSize = 16
@@ -1491,17 +1523,27 @@ function UILib:CreateTextInput(panel, config)
     input.PlaceholderColor3 = Color3.fromRGB(150, 150, 160)
     input.BorderSizePixel = 0
     input.BackgroundTransparency = 0.2
-    input.TextTransparency = 1
+    input.TextTransparency = 0
     Instance.new("UICorner", input).CornerRadius = UDim.new(0, 12)
 
     local stroke = Instance.new("UIStroke", input)
     stroke.Color = UILib.Colors.JPUFF_PINK
     stroke.Transparency = 0.8
+    
+    -- Callback on focus lost
+    input.FocusLost:Connect(function(enterPressed)
+        callback(input.Text, enterPressed)
+    end)
 
     panel.ContentY = panel.ContentY + 55
     panel:UpdateCanvasSize()
 
-    return input
+    return {
+        TextBox = input,
+        GetText = function() return input.Text end,
+        SetText = function(text) input.Text = text end,
+        SetPlaceholder = function(text) input.PlaceholderText = text end
+    }
 end
 
 -- =====================================================
@@ -2180,3 +2222,4 @@ end
 
 
 return UILib
+
