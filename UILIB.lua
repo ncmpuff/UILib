@@ -1,5 +1,5 @@
 -- =====================================================
--- JPUFF UI LIBRARY V1.0
+-- JPUFF UI LIBRARY V1.0.1 (PATCHED)
 -- A comprehensive UI library for creating beautiful GUIs
 -- Extracted from JPUFF GUI V26
 -- =====================================================
