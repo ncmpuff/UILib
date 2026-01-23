@@ -847,7 +847,7 @@ function UILib:CreateToggle(panel, config)
         imgOn.ImageTransparency = oldState and 0 or 1
         imgOff.ImageTransparency = oldState and 1 or 0
         
-            tostring(imgOn.ImageTransparency), tostring(imgOff.ImageTransparency)))
+
 
         -- Animate track color
         TweenService:Create(track, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
@@ -1371,9 +1371,7 @@ function UILib:CreateCollapsibleToggle(panel, config)
                 frameData.imgOn.ImageTransparency = currentState and 0 or 1
                 frameData.imgOff.ImageTransparency = currentState and 1 or 0
                 
-                    i, tostring(currentState), 
-                    tostring(frameData.imgOn.ImageTransparency), 
-                    tostring(frameData.imgOff.ImageTransparency)))
+
             end
             
             -- Fade in animation
