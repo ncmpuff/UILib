@@ -1,3 +1,0 @@
-Restore Stamina
-local Event = game:GetService("ReplicatedStorage").RemoteEvents.RestoreStamina
-firesignal(Event.OnClientEvent)

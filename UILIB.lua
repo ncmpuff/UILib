@@ -79,7 +79,7 @@ UILib.Colors = {
     TEXT_SECONDARY = Color3.fromRGB(200, 200, 210),
     TOGGLE_OFF = Color3.fromRGB(60, 60, 70),
     SUCCESS = Color3.fromRGB(80, 200, 120),
-    WARNING = Color3.fromRGB(255, 215, 0),
+        ING = Color3.fromRGB(255, 215, 0),
     ERROR = Color3.fromRGB(220, 80, 100),
 }
 
@@ -178,7 +178,6 @@ function UILib:SaveKeybinds()
     end)
     
     if not success then
-        warn("Failed to save keybinds:", err)
     end
 end
 
@@ -196,7 +195,6 @@ function UILib:LoadKeybinds()
     if success and type(result) == "table" then
         return result
     else
-        warn("Failed to load keybinds:", result)
         return {}
     end
 end
@@ -477,7 +475,6 @@ function UILib:CreateWindow(config)
 
     local dragConnection = UserInputService.InputChanged:Connect(function(input)
         if input == dragInput and dragging then
-            -- print("DEBUG: Drag Update loop")
             update(input)
         end
     end)
@@ -841,7 +838,6 @@ function UILib:CreateToggle(panel, config)
         local oldState = state
         state = not state
         
-        warn(string.format("\n🔄 TOGGLE: oldState=%s → newState=%s", tostring(oldState), tostring(state)))
 
         -- Keep both icons ALWAYS visible but set correct starting transparency
         imgOn.Visible = true
@@ -851,7 +847,6 @@ function UILib:CreateToggle(panel, config)
         imgOn.ImageTransparency = oldState and 0 or 1
         imgOff.ImageTransparency = oldState and 1 or 0
         
-        warn(string.format("  START: imgOn.Trans=%s, imgOff.Trans=%s", 
             tostring(imgOn.ImageTransparency), tostring(imgOff.ImageTransparency)))
 
         -- Animate track color
@@ -870,7 +865,6 @@ function UILib:CreateToggle(panel, config)
 
         local targetOnTransparency = state and 0 or 1
         local targetOffTransparency = state and 1 or 0
-        warn(string.format("  TARGET: imgOn.Trans=%s, imgOff.Trans=%s", 
             tostring(targetOnTransparency), tostring(targetOffTransparency)))
 
         -- Animate to TARGET transparency based on NEW state (where we're going)
@@ -881,7 +875,6 @@ function UILib:CreateToggle(panel, config)
 
         task.delay(0.65, function()
             isAnimating = false
-            warn(string.format("  END: imgOn.Trans=%s, imgOff.Trans=%s\n", 
                 tostring(imgOn.ImageTransparency), tostring(imgOff.ImageTransparency)))
         end)
 
@@ -1234,7 +1227,6 @@ function UILib:CreateCollapsibleToggle(panel, config)
         if not isExpanded then return end
         isExpanded = false
         
-        warn(string.format("  AUTO-CLOSING '%s'", labelText))
         
         -- Animate arrow rotation
         TweenService:Create(arrowButton, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
@@ -1294,12 +1286,10 @@ function UILib:CreateCollapsibleToggle(panel, config)
     arrowButton.MouseButton1Click:Connect(function()
         -- GLOBAL ANTI-SPAM: Ignore clicks while ANY collapsible is animating
         if UILib.CollapsibleAnimating then 
-            warn(string.format("⛔ CLICK IGNORED for '%s' - another toggle is animating", labelText))
             return 
         end
         
         UILib.CollapsibleAnimating = true  -- Lock ALL collapsible toggles globally
-        warn(string.format("\n⬇️ ARROW CLICKED for '%s' - isExpanded: %s → %s [VERSION:GLOBAL-LOCK-v1]", labelText, tostring(isExpanded), tostring(not isExpanded)))
 
         
         local targetState = not isExpanded
@@ -1314,7 +1304,6 @@ function UILib:CreateCollapsibleToggle(panel, config)
             end
             
             if #otherToggles > 0 then
-                warn(string.format("  Closing %d other toggle(s) first...", #otherToggles))
                 for _, otherCollapse in ipairs(otherToggles) do
                     otherCollapse()
                 end
@@ -1334,7 +1323,6 @@ function UILib:CreateCollapsibleToggle(panel, config)
             -- Unlock after collapse animation completes
             task.delay(0.3, function()
                 UILib.CollapsibleAnimating = false
-                warn(string.format("🔓 GLOBALLY UNLOCKED after '%s' collapse", labelText))
             end)
             
             return  -- Exit early since collapseThisToggle handles everything
@@ -1348,7 +1336,6 @@ function UILib:CreateCollapsibleToggle(panel, config)
         local mainToggleY = y
         local elementsToShift = {}
         
-        warn(string.format("  Searching for elements below Y=%d (mainToggle + 50 = %d)", mainToggleY, mainToggleY + 50))
         
         -- Build a set of sub-toggle elements to exclude
         local subToggleElements = {}
@@ -1362,13 +1349,10 @@ function UILib:CreateCollapsibleToggle(panel, config)
                 -- CRITICAL: Skip sub-toggle elements - they shouldn't be shifted!
                 if not subToggleElements[child] and child.Position.Y.Offset > mainToggleY + 50 then
                     table.insert(elementsToShift, child)
-                    warn(string.format("    Found element '%s' at Y=%d - will shift", child.Name, child.Position.Y.Offset))
                 end
             end
         end
         
-        warn(string.format("  Total elements to shift: %d", #elementsToShift))
-        warn(string.format("  → Expanding: showing %d sub-toggles", #subFrames))
         
         -- Show sub-toggles with animation
         for i, frameData in ipairs(subFrames) do
@@ -1387,7 +1371,6 @@ function UILib:CreateCollapsibleToggle(panel, config)
                 frameData.imgOn.ImageTransparency = currentState and 0 or 1
                 frameData.imgOff.ImageTransparency = currentState and 1 or 0
                 
-                warn(string.format("    Reset sub-toggle %d: state=%s, imgOn.Trans=%s, imgOff.Trans=%s",
                     i, tostring(currentState), 
                     tostring(frameData.imgOn.ImageTransparency), 
                     tostring(frameData.imgOff.ImageTransparency)))
@@ -1418,7 +1401,6 @@ function UILib:CreateCollapsibleToggle(panel, config)
         task.delay(2, function()
             panel:UpdateCanvasSize()
             UILib.CollapsibleAnimating = false
-            warn(string.format("🔓 GLOBALLY UNLOCKED after '%s' expand", labelText))
         end)
     end)
 
