@@ -91,14 +91,14 @@ UILib.IsMobile = UserInputService.TouchEnabled and not UserInputService.MouseEna
 -- Mobile-specific sizing (increased for better visibility)
 UILib.MobileSizes = {
     -- Window/Selector
-    SelectorWidth = 180,
-    SelectorHeight = 400,
+    SelectorWidth = 160,
+    SelectorHeight = 300,
     SelectorPosition = UDim2.fromOffset(10, 10),
     
     -- Panel
-    PanelWidth = 280,
-    PanelHeight = 400,  -- Match selector height
-    PanelOffsetX = 195,
+    PanelWidth = 260,
+    PanelHeight = 300,  -- Match selector height
+    PanelOffsetX = 175,
     
     -- Text sizes
     HeaderTextSize = 14,
@@ -119,13 +119,13 @@ UILib.MobileSizes = {
 
 -- Desktop sizing (defaults)
 UILib.DesktopSizes = {
-    SelectorWidth = 240,
-    SelectorHeight = 450,
+    SelectorWidth = 220,
+    SelectorHeight = 375,
     SelectorPosition = UDim2.fromOffset(50, 50),
     
-    PanelWidth = 360,
+    PanelWidth = 340,
     PanelHeight = 530,
-    PanelOffsetX = 310,
+    PanelOffsetX = 290,
     
     HeaderTextSize = 18,
     PanelHeaderTextSize = 22,
