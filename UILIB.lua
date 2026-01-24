@@ -1874,6 +1874,14 @@ end)
             optionsContainer.Visible = true
             local maxHeight = math.min(#options * 42 + searchOffset, 350 + searchOffset)
             
+            -- FIX FOR MOBILE/CLIPPING: Ensure CanvasSize is large enough to show the dropdown
+            -- If dropdown extends beyond current canvas, extend canvas
+            local dropdownBottom = y + 75 + maxHeight
+            local currentCanvas = panel.ScrollingFrame.CanvasSize.Y.Offset
+            if dropdownBottom > currentCanvas then
+                panel.ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, dropdownBottom + 20)
+            end
+            
             TweenService:Create(arrow, TweenInfo.new(0.3), {Rotation = 180}):Play()
             TweenService:Create(optionsContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
                 Size = UDim2.new(1, -60, 0, maxHeight)
@@ -1892,6 +1900,8 @@ end)
             
             task.delay(0.3, function()
                 optionsContainer.Visible = false
+                -- Restore canvas size when closed
+                panel:UpdateCanvasSize()
             end)
             
             -- Clear search when closed
