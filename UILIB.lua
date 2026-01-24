@@ -88,17 +88,17 @@ UILib.Colors = {
 -- =====================================================
 UILib.IsMobile = UserInputService.TouchEnabled and not UserInputService.MouseEnabled
 
--- Mobile-specific sizing
+-- Mobile-specific sizing (increased for better visibility)
 UILib.MobileSizes = {
     -- Window/Selector
-    SelectorWidth = 160,
-    SelectorHeight = 280,
+    SelectorWidth = 180,
+    SelectorHeight = 400,
     SelectorPosition = UDim2.fromOffset(10, 10),
     
     -- Panel
-    PanelWidth = 240,
-    PanelHeight = 280,  -- Match selector height
-    PanelOffsetX = 175,
+    PanelWidth = 280,
+    PanelHeight = 400,  -- Match selector height
+    PanelOffsetX = 195,
     
     -- Text sizes
     HeaderTextSize = 14,
@@ -119,13 +119,13 @@ UILib.MobileSizes = {
 
 -- Desktop sizing (defaults)
 UILib.DesktopSizes = {
-    SelectorWidth = 220,
-    SelectorHeight = 375,
+    SelectorWidth = 240,
+    SelectorHeight = 450,
     SelectorPosition = UDim2.fromOffset(50, 50),
     
-    PanelWidth = 340,
+    PanelWidth = 360,
     PanelHeight = 530,
-    PanelOffsetX = 290,
+    PanelOffsetX = 310,
     
     HeaderTextSize = 18,
     PanelHeaderTextSize = 22,
@@ -403,12 +403,18 @@ function UILib:CreateWindow(config)
     selectorHeader.TextXAlignment = Enum.TextXAlignment.Center
     selectorHeader.TextTransparency = 1
 
-    -- Buttons container - responsive height
+    -- Buttons container - responsive height (ScrollingFrame for scrollable panel list)
     local containerHeight = sizes.SelectorHeight - 60
-    local selectorButtonsContainer = Instance.new("Frame", selectorFrame)
+    local selectorButtonsContainer = Instance.new("ScrollingFrame", selectorFrame)
     selectorButtonsContainer.Size = UDim2.new(1, -20, 0, containerHeight)
     selectorButtonsContainer.Position = UDim2.fromOffset(10, 55)
     selectorButtonsContainer.BackgroundTransparency = 1
+    selectorButtonsContainer.BorderSizePixel = 0
+    selectorButtonsContainer.ScrollBarThickness = 4
+    selectorButtonsContainer.ScrollBarImageColor3 = accentColor
+    selectorButtonsContainer.CanvasSize = UDim2.fromOffset(0, 0)
+    selectorButtonsContainer.ScrollingDirection = Enum.ScrollingDirection.Y
+    selectorButtonsContainer.ClipsDescendants = true
 
     local selectorListLayout = Instance.new("UIListLayout", selectorButtonsContainer)
     selectorListLayout.FillDirection = Enum.FillDirection.Vertical
@@ -416,6 +422,11 @@ function UILib:CreateWindow(config)
     selectorListLayout.VerticalAlignment = Enum.VerticalAlignment.Top
     selectorListLayout.Padding = UDim.new(0, sizes.ButtonPadding)
     selectorListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    
+    -- Auto-update canvas size when buttons are added
+    selectorListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        selectorButtonsContainer.CanvasSize = UDim2.fromOffset(0, selectorListLayout.AbsoluteContentSize.Y + 10)
+    end)
 
     window.SelectorFrame = selectorFrame
     window.SelectorButtonsContainer = selectorButtonsContainer
