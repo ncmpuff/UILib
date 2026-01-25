@@ -1178,8 +1178,9 @@ function UILib:CreateCollapsibleToggle(panel, config)
         local subAccumulatedRotation = 0
         local subIsAnimating = false
 
-        local function subToggle()
-            if subIsAnimating then return subState end
+        local function subToggle(force)
+            if subIsAnimating and not force then return subState end
+            if force then subIsAnimating = false end
             subIsAnimating = true
 
             local oldSubState = subState
@@ -1229,6 +1230,7 @@ function UILib:CreateCollapsibleToggle(panel, config)
             imgOn = subImgOn,  -- CRITICAL: Store icon references
             imgOff = subImgOff,
             getState = function() return subState end,  -- Store state getter
+            toggleFunc = subToggle, -- CRITICAL: Store toggle function for external sync
             yPosition = subY
         })
 
@@ -1435,6 +1437,8 @@ function UILib:CreateCollapsibleToggle(panel, config)
         GetState = function() return state end,
         SetState = function(newState)
             if newState ~= state then
+                 -- Force reset animation lock to ensure SyncToggles works
+                isAnimating = false
                 toggle()
             end
         end,
@@ -1448,7 +1452,25 @@ function UILib:CreateCollapsibleToggle(panel, config)
             if isExpanded then
                 arrowButton.MouseButton1Click:Fire()
             end
-        end
+        end,
+        -- Expose sub-toggles for external sync (Config System)
+        SubToggles = (function()
+            local exposed = {}
+            for i, frameData in ipairs(subFrames) do
+                table.insert(exposed, {
+                    SetState = function(val)
+                        -- Only toggle if different
+                        if val ~= frameData.getState() then
+                            if frameData.toggleFunc then
+                                -- Pass true to force update (bypass animation lock)
+                                frameData.toggleFunc(true)
+                            end
+                        end
+                    end
+                })
+            end
+            return exposed
+        end)()
     }
 end
 
