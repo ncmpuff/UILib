@@ -2264,5 +2264,388 @@ end
 
 
 
+-- =====================================================
+-- 20. UNIVERSAL ESP MODULE
+-- =====================================================
+UILib.ESP = {
+    Config = {
+        Enabled = false,
+        
+        -- Player ESP
+        PlayerESP = false,
+        ShowName = true,
+        ShowRole = true, -- Or Team
+        ShowHealth = true,
+        ShowItems = false,
+        ShowDistance = false,
+        ShowTracers = false,
+        UseTeamColors = true,
+        
+        -- Item ESP
+        ItemESP = false,
+        ItemDistance = 150,
+        ShowItemName = true,
+        ShowItemDistance = true,
+        
+        -- Colors
+        EnemyColor = Color3.fromRGB(255, 0, 0),
+        AllyColor = Color3.fromRGB(0, 255, 0),
+        ItemColor = Color3.fromRGB(255, 255, 0),
+        
+        -- Performance
+        UpdateRate = 0.05 -- Seconds between heavy updates
+    },
+    
+    -- Runtime Storage
+    Cache = {
+        Players = {}, -- [player] = {Highlight, Billboard, Labels...}
+        Items = {},   -- [part] = {Highlight, Billboard}
+    },
+    Connections = {},
+    IsRunning = false
+}
+
+-- Helper: Get Player Team Color or default
+function UILib.ESP:GetTeamColor(player)
+    if not player then return Color3.fromRGB(255, 255, 255) end
+    if self.Config.UseTeamColors and player.Team then
+        return player.Team.TeamColor.Color
+    end
+    return self.Config.EnemyColor -- Default fallback
+end
+
+-- Helper: Get Health Color
+function UILib.ESP:GetHealthColor(health, maxHealth)
+    local hpPercent = health / maxHealth
+    if hpPercent > 0.6 then return Color3.fromRGB(0, 255, 0)
+    elseif hpPercent > 0.3 then return Color3.fromRGB(255, 165, 0)
+    else return Color3.fromRGB(255, 0, 0) end
+end
+
+-- Create Player ESP Objects
+function UILib.ESP:AddPlayer(player)
+    if self.Cache.Players[player] then return end
+    if player == Players.LocalPlayer then return end
+    
+    local char = player.Character
+    if not char then return end
+    
+    local root = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Head")
+    if not root then return end
+    
+    -- 1. Highlight
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "UILIB_ESP_Highlight"
+    highlight.Adornee = char
+    highlight.FillTransparency = 0.5
+    highlight.OutlineTransparency = 1
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.FillColor = self:GetTeamColor(player)
+    highlight.Enabled = self.Config.PlayerESP
+    highlight.Parent = char
+
+    -- 2. BillboardGui
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "UILIB_ESP_Info"
+    billboard.Adornee = root
+    billboard.Size = UDim2.new(0, 200, 0, 70) 
+    billboard.StudsOffset = Vector3.new(0, 4, 0)
+    billboard.AlwaysOnTop = true
+    billboard.Enabled = self.Config.PlayerESP
+    billboard.Parent = char
+    
+    local listLayout = Instance.new("UIListLayout")
+    listLayout.Parent = billboard
+    listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    listLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+    
+    -- Label Creator Helper
+    local function createLabel(order, color, fontSize)
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, 0, 0, fontSize + 2)
+        label.BackgroundTransparency = 1
+        label.TextColor3 = color
+        label.TextStrokeTransparency = 0
+        label.TextStrokeColor3 = Color3.new(0, 0, 0)
+        label.Font = Enum.Font.RobotoMono
+        label.TextSize = fontSize
+        label.LayoutOrder = order
+        label.Parent = billboard
+        label.Text = ""
+        label.Visible = false
+        return label
+    end
+
+    local teamLabel = createLabel(1, Color3.new(1,1,1), 11)   -- Role
+    local nameLabel = createLabel(2, Color3.new(1,1,1), 13)   -- Name
+    local healthLabel = createLabel(3, Color3.new(0,1,0), 11) -- Health
+    local distLabel = createLabel(4, Color3.new(1,1,1), 10)   -- Distance
+    local itemLabel = createLabel(5, Color3.new(1,1,0), 10)   -- Item
+
+    self.Cache.Players[player] = {
+        Highlight = highlight,
+        Billboard = billboard,
+        Labels = {
+            Team = teamLabel,
+            Name = nameLabel,
+            Health = healthLabel,
+            Distance = distLabel,
+            Item = itemLabel
+        },
+        Character = char
+    }
+end
+
+function UILib.ESP:RemovePlayer(player)
+    local data = self.Cache.Players[player]
+    if data then
+        if data.Highlight then data.Highlight:Destroy() end
+        if data.Billboard then data.Billboard:Destroy() end
+        self.Cache.Players[player] = nil
+    end
+end
+
+-- Item ESP Implementation
+function UILib.ESP:ScanItems()
+    if not self.Config.ItemESP then 
+        -- Cleanup if disabled
+        for item, data in pairs(self.Cache.Items) do
+            if data.Highlight then data.Highlight:Destroy() end
+            if data.Billboard then data.Billboard:Destroy() end
+            self.Cache.Items[item] = nil
+        end
+        return 
+    end
+
+    local myChar = Players.LocalPlayer.Character
+    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return end
+
+    -- Scan Workspace for dropped tools or handles
+    -- Note: This is a simple generic scan. For specific games, you might target specific folders.
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("Tool") and obj:FindFirstChild("Handle") then
+            -- Check Distance
+            local handle = obj.Handle
+            local dist = (handle.Position - myRoot.Position).Magnitude
+            
+            if dist <= self.Config.ItemDistance then
+                -- Add ESP if not exists
+                if not self.Cache.Items[obj] then
+                    local highlight = Instance.new("Highlight")
+                    highlight.Name = "ESP_ItemHighlight"
+                    highlight.Adornee = handle
+                    highlight.FillColor = self.Config.ItemColor
+                    highlight.OutlineColor = self.Config.ItemColor
+                    highlight.FillTransparency = 0.5
+                    highlight.OutlineTransparency = 0
+                    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                    highlight.Parent = handle
+                    
+                    local bb = Instance.new("BillboardGui")
+                    bb.Name = "ESP_ItemInfo"
+                    bb.Adornee = handle
+                    bb.Size = UDim2.new(0, 100, 0, 30)
+                    bb.StudsOffset = Vector3.new(0, 2, 0)
+                    bb.AlwaysOnTop = true
+                    bb.Parent = handle
+                    
+                    local txt = Instance.new("TextLabel", bb)
+                    txt.Size = UDim2.new(1, 0, 1, 0)
+                    txt.BackgroundTransparency = 1
+                    txt.TextColor3 = self.Config.ItemColor
+                    txt.TextStrokeTransparency = 0
+                    txt.Text = obj.Name
+                    txt.TextSize = 12
+                    txt.Font = Enum.Font.RobotoMono
+                    
+                    self.Cache.Items[obj] = {
+                        Highlight = highlight,
+                        Billboard = bb,
+                        Text = txt
+                    }
+                end
+            else
+                -- Remove if out of range
+                if self.Cache.Items[obj] then
+                    self.Cache.Items[obj].Highlight:Destroy()
+                    self.Cache.Items[obj].Billboard:Destroy()
+                    self.Cache.Items[obj] = nil
+                end
+            end
+        end
+    end
+end
+
+-- Main Update Loop
+function UILib.ESP:Update()
+    if not self.Config.Enabled then return end
+    
+    -- Update Players
+    for player, data in pairs(self.Cache.Players) do
+        if not player.Parent then
+            self:RemovePlayer(player) -- Player left
+        elseif not data.Character or not data.Character.Parent then
+             -- Character respawned or deleted
+             self:RemovePlayer(player)
+             if player.Character then self:AddPlayer(player) end -- Re-add
+        else
+            -- Check visibility
+            if not self.Config.PlayerESP then
+                data.Highlight.Enabled = false
+                data.Billboard.Enabled = false
+            else
+                local hum = data.Character:FindFirstChild("Humanoid")
+                local root = data.Character:FindFirstChild("HumanoidRootPart")
+                
+                if hum and root then
+                    data.Highlight.Enabled = true
+                    data.Billboard.Enabled = true
+                    
+                    -- Color Update
+                    data.Highlight.FillColor = self:GetTeamColor(player)
+                    
+                    -- Text Updates
+                    local labels = data.Labels
+                    
+                    -- Role/Team
+                    if self.Config.ShowRole then
+                        labels.Team.Visible = true
+                        labels.Team.Text = (player.Team and player.Team.Name) or "No Team"
+                        labels.Team.TextColor3 = self:GetTeamColor(player)
+                    else
+                        labels.Team.Visible = false
+                    end
+                    
+                    -- Name
+                    if self.Config.ShowName then
+                        labels.Name.Visible = true
+                        labels.Name.Text = player.Name
+                    else
+                        labels.Name.Visible = false
+                    end
+                    
+                    -- Health
+                    if self.Config.ShowHealth then
+                        local hp = math.floor(hum.Health)
+                        local max = math.floor(hum.MaxHealth)
+                        labels.Health.Visible = true
+                        labels.Health.Text = string.format("HP: %d/%d", hp, max)
+                        labels.Health.TextColor3 = self:GetHealthColor(hum.Health, hum.MaxHealth)
+                    else
+                        labels.Health.Visible = false
+                    end
+                    
+                    -- Item (Equipped)
+                    if self.Config.ShowItems then
+                        local tool = data.Character:FindFirstChildOfClass("Tool")
+                        if tool then
+                            labels.Item.Visible = true
+                            labels.Item.Text = tool.Name
+                        else
+                            labels.Item.Visible = false
+                        end
+                    else
+                        labels.Item.Visible = false
+                    end
+                    
+                    -- Distance
+                    if self.Config.ShowDistance and Players.LocalPlayer.Character then
+                        local myRoot = Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                        if myRoot then
+                            local dist = (root.Position - myRoot.Position).Magnitude
+                            labels.Distance.Visible = true
+                            labels.Distance.Text = string.format("[%d]", math.floor(dist))
+                        else
+                            labels.Distance.Visible = false
+                        end
+                    else
+                        labels.Distance.Visible = false
+                    end
+                else
+                    -- Hide if dead/incomplete
+                    data.Highlight.Enabled = false
+                    data.Billboard.Enabled = false
+                end
+            end
+        end
+    end
+    
+    -- Update Items (Throttled?)
+    -- Ideally, don't run this every frame unless needed. 
+    -- For this simple implementation, we'll run it but rely on the cache.
+    -- self:ScanItems() -- Call this from a slower loop
+end
+
+-- Toggle ESP System
+function UILib.ESP:Toggle(state)
+    self.Config.Enabled = state
+    self.IsRunning = state
+    
+    if state then
+        -- Start Loop
+        local RunService = game:GetService("RunService")
+        self.Connections.Update = RunService.RenderStepped:Connect(function()
+            self:Update()
+        end)
+        
+        -- Slower loop for Item Scan and Player Cache Refresh
+        task.spawn(function()
+            while self.IsRunning do
+                -- Refresh Players
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if p ~= Players.LocalPlayer then
+                        if not self.Cache.Players[p] and p.Character then
+                            self:AddPlayer(p)
+                        end
+                    end
+                end
+                
+                -- Refresh Items
+                if self.Config.ItemESP then
+                    self:ScanItems()
+                end
+                
+                task.wait(1)
+            end
+        end)
+        
+        -- Player Added/Removing Listeners
+        self.Connections.PlayerAdded = Players.PlayerAdded:Connect(function(p)
+            p.CharacterAdded:Connect(function(c)
+                task.wait(0.5) -- Wait for load
+                self:AddPlayer(p)
+            end)
+        end)
+        
+        self.Connections.PlayerRemoving = Players.PlayerRemoving:Connect(function(p)
+            self:RemovePlayer(p)
+        end)
+        
+        -- Initial Add
+        for _, p in ipairs(Players:GetPlayers()) do
+            self:AddPlayer(p)
+        end
+        
+    else
+        -- Cleanup
+        for _, conn in pairs(self.Connections) do
+            conn:Disconnect()
+        end
+        self.Connections = {}
+        
+        -- Clear Visuals
+        for p, _ in pairs(self.Cache.Players) do
+            self:RemovePlayer(p)
+        end
+        for i, data in pairs(self.Cache.Items) do
+            if data.Highlight then data.Highlight:Destroy() end
+            if data.Billboard then data.Billboard:Destroy() end
+        end
+        self.Cache.Items = {}
+    end
+end
+
 return UILib
 
