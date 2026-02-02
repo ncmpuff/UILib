@@ -1,0 +1,719 @@
+--[[
+=================================================================
+                    JPUFF UILIB MANUAL v1.0
+               Reference Guide for AI Assistants
+=================================================================
+
+This document provides a complete reference for the JPUFF UILib.
+Use this guide when modifying or creating UI elements in scripts
+that use this library.
+
+=================================================================
+                     TABLE OF CONTENTS
+=================================================================
+1. INITIALIZATION
+2. COLOR PALETTE
+3. WINDOW CREATION (CreateWindow)
+4. PANEL CREATION (CreatePanel)
+5. TOGGLE (CreateToggle)
+6. COLLAPSIBLE TOGGLE (CreateCollapsibleToggle)
+7. SLIDER (CreateSlider)
+8. DROPDOWN (CreateDropdown)
+9. BUTTON (CreateButton)
+10. TEXT INPUT (CreateTextInput)
+11. KEYBIND (CreateKeybind)
+12. NOTIFICATION (CreateNotification)
+13. LOADING SCREEN (CreateLoadingScreen)
+14. PANEL NAVIGATION (ShowPanel, HidePanel)
+15. TOGGLE KEY (AddToggleKey)
+16. MOBILE DETECTION
+17. SIZING SYSTEM
+18. SAVING/SYNCING UI STATE
+19. COMMON PATTERNS
+=================================================================
+
+=================================================================
+1. INITIALIZATION
+=================================================================
+Load the UILib from either local file or GitHub:
+
+    local UILib
+    -- Try local file first
+    if isfile and isfile("UILIB.lua") then
+        UILib = loadstring(readfile("UILIB.lua"))()
+    else
+        -- Fallback to GitHub
+        UILib = loadstring(game:HttpGet("https://raw.githubusercontent.com/ncmpuff/UILib/main/UILIB.lua"))()
+    end
+
+=================================================================
+2. COLOR PALETTE (UILib.Colors)
+=================================================================
+Available built-in colors:
+
+    UILib.Colors.JPUFF_PINK        -- Color3.fromRGB(255, 182, 193)
+    UILib.Colors.JPUFF_HOT_PINK    -- Color3.fromRGB(255, 105, 180)
+    UILib.Colors.JPUFF_DARK_PINK   -- Color3.fromRGB(255, 140, 170)
+    UILib.Colors.BG_DARK           -- Color3.fromRGB(25, 25, 35)
+    UILib.Colors.BG_CARD           -- Color3.fromRGB(35, 35, 45)
+    UILib.Colors.TEXT_PRIMARY      -- Color3.fromRGB(255, 255, 255)
+    UILib.Colors.TEXT_SECONDARY    -- Color3.fromRGB(200, 200, 210)
+    UILib.Colors.TOGGLE_OFF        -- Color3.fromRGB(60, 60, 70)
+    UILib.Colors.SUCCESS           -- Color3.fromRGB(80, 200, 120)
+    UILib.Colors.WARNING           -- Color3.fromRGB(255, 215, 0)
+    UILib.Colors.ERROR             -- Color3.fromRGB(220, 80, 100)
+
+=================================================================
+3. WINDOW CREATION (CreateWindow)
+=================================================================
+Creates the main selector window that holds all panels.
+
+SYNTAX:
+    local Window = UILib:CreateWindow({
+        Title = "My GUI",             -- Window title (string)
+        AccentColor = Color3,         -- Optional: Accent color for styling
+        Name = "MyWindow",            -- Optional: ScreenGui name
+        Position = UDim2,             -- Optional: Starting position
+        DisplayOrder = 10000          -- Optional: Display order
+    })
+
+RETURNS: Window object with these methods:
+    - Window:ShowPanel(panelName)     -- Show a panel by name
+    - Window:HidePanel(panelName)     -- Hide a panel by name
+    - Window:CreatePanel(config)      -- Create a new panel
+    - Window:AddToggleKey(keyCode)    -- Add keybind to toggle GUI visibility
+    - Window:Notify(config)           -- Create notification (same as UILib:CreateNotification)
+    - Window:Confirm(config)          -- Create confirmation dialog
+    - Window:Destroy()                -- Destroy the window
+
+WINDOW PROPERTIES:
+    - Window.ScreenGui                -- The ScreenGui instance
+    - Window.Panels                   -- Table of all panels (keyed by name)
+    - Window.CurrentPanel             -- Name of currently shown panel
+    - Window.AccentColor              -- The accent color
+    - Window.SelectorFrame            -- The main selector frame
+
+EXAMPLE:
+    local Window = UILib:CreateWindow({
+        Title = "Retro Breach",
+        AccentColor = Color3.fromRGB(255, 100, 150)
+    })
+
+=================================================================
+4. PANEL CREATION (CreatePanel)
+=================================================================
+Creates a tab/panel that can contain UI elements.
+
+SYNTAX:
+    local Panel = Window:CreatePanel({
+        Name = "Combat",              -- Panel identifier (string)
+        DisplayName = "Combat Tab",   -- Display name (optional, defaults to Name)
+        Color = Color3,               -- Optional: Panel accent color
+        LayoutOrder = 1,              -- Optional: Order in selector list
+        Size = UDim2                  -- Optional: Custom panel size
+    })
+
+RETURNS: Panel object with these properties/methods:
+    - Panel.Name                      -- Panel identifier
+    - Panel.Frame                     -- The panel Frame instance
+    - Panel.ScrollingFrame            -- ScrollingFrame for content
+    - Panel.Button                    -- Selector button
+    - Panel.ContentY                  -- Current Y position for content
+    - Panel:UpdateCanvasSize()        -- Update scrolling canvas size
+
+EXAMPLE:
+    local CombatPanel = Window:CreatePanel({
+        Name = "Combat",
+        DisplayName = "Combat",
+        LayoutOrder = 1
+    })
+    
+    local ESPPanel = Window:CreatePanel({
+        Name = "ESP",
+        DisplayName = "ESP / Visuals",
+        LayoutOrder = 2
+    })
+
+=================================================================
+5. TOGGLE (CreateToggle)
+=================================================================
+Creates a simple on/off toggle switch.
+
+SYNTAX:
+    local ToggleObj = UILib:CreateToggle(Panel, {
+        Label = "Enable Feature",     -- Toggle label text
+        Default = false,              -- Initial state (boolean)
+        Callback = function(state)    -- Called when toggled
+            -- state is boolean (true/false)
+        end
+    })
+
+RETURNS: Toggle object with these methods:
+    - ToggleObj.Toggle()              -- Toggle the switch
+    - ToggleObj.GetState()            -- Returns current boolean state
+    - ToggleObj.SetState(bool)        -- Set state (triggers callback)
+    - ToggleObj.SetStateSilent(bool)  -- Set state without callback (for config loading)
+    - ToggleObj.Track                 -- Track Frame reference
+    - ToggleObj.Label                 -- Label TextLabel reference
+
+IMPORTANT: SetStateSilent is used for loading saved configs without re-triggering side effects.
+
+EXAMPLE:
+    Toggles.Aimbot = UILib:CreateToggle(CombatPanel, {
+        Label = "Aimbot",
+        Default = Config.Aimbot,
+        Callback = function(state)
+            Config.Aimbot = state
+        end
+    })
+    
+    -- Later, to sync from config:
+    Toggles.Aimbot.SetState(Config.Aimbot)
+
+=================================================================
+6. COLLAPSIBLE TOGGLE (CreateCollapsibleToggle)
+=================================================================
+Creates a toggle with expandable sub-toggles below it.
+Clicking the arrow (▶) expands/collapses the sub-options.
+
+SYNTAX:
+    local CollapsibleObj = UILib:CreateCollapsibleToggle(Panel, {
+        Label = "Main Toggle",
+        Default = false,
+        Callback = function(state) end,
+        AutoCloseDelay = 1,           -- Delay before auto-closing other collapsibles
+        SubToggles = {
+            {
+                Label = "Sub Option 1",
+                Default = false,
+                Callback = function(state) end
+            },
+            {
+                Label = "Sub Option 2",
+                Default = true,
+                Callback = function(state) end
+            }
+        }
+    })
+
+RETURNS: Collapsible object with:
+    - CollapsibleObj.Toggle()         -- Toggle main switch
+    - CollapsibleObj.GetState()       -- Get main toggle state
+    - CollapsibleObj.SetState(bool)   -- Set main toggle state
+    - CollapsibleObj.IsExpanded()     -- Check if expanded
+    - CollapsibleObj.Expand()         -- Expand sub-toggles
+    - CollapsibleObj.Collapse()       -- Collapse sub-toggles
+    - CollapsibleObj.SubToggles       -- Array of sub-toggle objects
+        - CollapsibleObj.SubToggles[1].SetState(bool)
+
+EXAMPLE:
+    Toggles.RageBot = UILib:CreateCollapsibleToggle(CombatPanel, {
+        Label = "Rage Bot",
+        Default = Config.RageBot,
+        Callback = function(state)
+            Config.RageBot = state
+        end,
+        SubToggles = {
+            {
+                Label = "One Tap",
+                Default = Config.RageBotOneTap,
+                Callback = function(state)
+                    Config.RageBotOneTap = state
+                end
+            },
+            {
+                Label = "Rapid Fire",
+                Default = Config.RageBotRapidFire,
+                Callback = function(state)
+                    Config.RageBotRapidFire = state
+                end
+            }
+        }
+    })
+
+=================================================================
+7. SLIDER (CreateSlider)
+=================================================================
+Creates a draggable slider for numeric values.
+
+SYNTAX:
+    local SliderObj = UILib:CreateSlider(Panel, {
+        Text = "Walk Speed",          -- Slider label
+        Min = 0,                      -- Minimum value
+        Max = 100,                    -- Maximum value
+        Default = 16,                 -- Initial value
+        Callback = function(value)    -- Called on value change
+            -- value is number
+        end
+    })
+
+RETURNS: Slider object with:
+    - SliderObj.SetValue(number)      -- Set slider value programmatically
+
+EXAMPLE:
+    Sliders.AimbotFOV = UILib:CreateSlider(CombatPanel, {
+        Text = "Aimbot FOV",
+        Min = 50,
+        Max = 800,
+        Default = Config.AimbotFOV,
+        Callback = function(value)
+            Config.AimbotFOV = value
+        end
+    })
+
+=================================================================
+8. DROPDOWN (CreateDropdown)
+=================================================================
+Creates a dropdown selection menu with search functionality.
+
+SYNTAX:
+    local DropdownObj = UILib:CreateDropdown(Panel, {
+        Label = "Target Priority",
+        Options = {"Head", "Body", "Closest"},  -- Array of options
+        EnableSearch = true,          -- Enable search box (default: true)
+        Callback = function(selected)
+            -- selected is the string option name
+        end
+    })
+
+RETURNS: Dropdown object with:
+    - DropdownObj.SetValue(string)     -- Set selected option
+    - DropdownObj.GetValue()           -- Get selected option
+    - DropdownObj.UpdateOptions(tbl)   -- Replace options array
+
+EXAMPLE:
+    Dropdowns.AimAssistTarget = UILib:CreateDropdown(CombatPanel, {
+        Label = "Aim Assist Target",
+        Options = {"Head Only", "Body Only", "Humanized"},
+        Callback = function(selected)
+            Config.AimAssistTarget = selected
+        end
+    })
+    
+    -- Set value programmatically:
+    Dropdowns.AimAssistTarget.SetValue("Humanized")
+    
+    -- Update options dynamically:
+    Dropdowns.AimAssistTarget.UpdateOptions({"Option A", "Option B", "Option C"})
+
+=================================================================
+9. BUTTON (CreateButton)
+=================================================================
+Creates a clickable button.
+
+SYNTAX:
+    local ButtonObj = UILib:CreateButton(Panel, {
+        Text = "Apply Settings",
+        Color = UILib.Colors.SUCCESS,  -- Optional: Button color
+        Callback = function()
+            -- Called on click
+        end
+    })
+
+RETURNS: Button object with:
+    - ButtonObj.Button                 -- TextButton reference
+    - ButtonObj.SetText(string)        -- Change button text
+    - ButtonObj.SetColor(Color3)       -- Change button color
+    - ButtonObj.SetEnabled(bool)       -- Enable/disable button
+    - ButtonObj.SetCallback(fn)        -- Change callback function
+
+EXAMPLE:
+    UILib:CreateButton(SettingsPanel, {
+        Text = "Save Config",
+        Color = UILib.Colors.SUCCESS,
+        Callback = function()
+            SaveConfigAs("default")
+            UILib:CreateNotification({Text = "Config Saved!", Duration = 2})
+        end
+    })
+
+=================================================================
+10. TEXT INPUT (CreateTextInput)
+=================================================================
+Creates a text input box.
+
+SYNTAX:
+    local InputObj = UILib:CreateTextInput(Panel, {
+        Placeholder = "Enter name...",  -- Placeholder text
+        Default = "",                   -- Default value
+        Callback = function(text, enterPressed)
+            -- text: current text
+            -- enterPressed: true if Enter was pressed
+        end
+    })
+
+RETURNS: TextInput object with:
+    - InputObj.TextBox                 -- TextBox reference
+    - InputObj.GetText()               -- Get current text
+    - InputObj.SetText(string)         -- Set text
+    - InputObj.SetPlaceholder(string)  -- Change placeholder
+
+EXAMPLE:
+    TextInputs.SpoofedName = UILib:CreateTextInput(SettingsPanel, {
+        Placeholder = "Spoofed display name...",
+        Default = Config.SpoofedName,
+        Callback = function(text, enterPressed)
+            Config.SpoofedName = text
+        end
+    })
+
+=================================================================
+11. KEYBIND (CreateKeybind)
+=================================================================
+Creates a rebindable keybind control.
+
+SYNTAX:
+    local KeybindObj = UILib:CreateKeybind(Panel, {
+        ActionName = "Toggle Fly",       -- Keybind identifier
+        DefaultKey = Enum.KeyCode.V,     -- Default key
+        Callback = function()            -- Called when key pressed
+            -- Triggered by pressing the bound key
+        end
+    })
+
+RETURNS: Keybind object with:
+    - KeybindObj.SetKey(keyCode)       -- Set keybind programmatically
+    - KeybindObj.GetKey()              -- Get current keybind
+    - KeybindObj.Remove()              -- Remove keybind control
+
+NOTES:
+- Click the keybind to rebind
+- Press ESC to unbind
+- Keybinds are saved to "UILib_Keybinds.json" automatically
+
+EXAMPLE:
+    UILib:CreateKeybind(SettingsPanel, {
+        ActionName = "Toggle Fly",
+        DefaultKey = Enum.KeyCode.V,
+        Callback = function()
+            _G.RetroBreach.ToggleFly()
+        end
+    })
+
+=================================================================
+12. NOTIFICATION (CreateNotification)
+=================================================================
+Creates a temporary notification popup.
+
+SYNTAX:
+    UILib:CreateNotification({
+        Text = "Feature enabled!",
+        Duration = 3,                    -- Seconds to show (default: 3)
+        Color = UILib.Colors.SUCCESS     -- Border color
+    })
+
+RETURNS: ScreenGui reference (auto-destroys after duration)
+
+EXAMPLE:
+    UILib:CreateNotification({
+        Text = "Config loaded successfully!",
+        Duration = 2,
+        Color = UILib.Colors.SUCCESS
+    })
+    
+    UILib:CreateNotification({
+        Text = "Error: Player not found",
+        Duration = 5,
+        Color = UILib.Colors.ERROR
+    })
+
+=================================================================
+13. LOADING SCREEN (CreateLoadingScreen)
+=================================================================
+Creates a loading screen with progress bar.
+
+SYNTAX:
+    local LoadingObj = UILib:CreateLoadingScreen({
+        Title = "Retro Breach",
+        AccentColor = Color3,            -- Loading bar color
+        Duration = 2.5,                  -- Loading duration in seconds
+        OnComplete = function()          -- Called when loading finished
+            -- Setup code here
+        end
+    })
+
+RETURNS: Loading object with:
+    - LoadingObj.Gui                   -- ScreenGui reference
+    - LoadingObj.Blur                  -- Blur effect reference
+    - LoadingObj.Destroy()             -- Force destroy loading screen
+
+EXAMPLE:
+    UILib:CreateLoadingScreen({
+        Title = "Retro Breach",
+        AccentColor = Color3.fromRGB(255, 100, 150),
+        Duration = 3,
+        OnComplete = function()
+            -- Initialize main GUI after loading
+            local Window = UILib:CreateWindow({Title = "Retro Breach"})
+        end
+    })
+
+=================================================================
+14. PANEL NAVIGATION (ShowPanel, HidePanel)
+=================================================================
+Programmatically control panel visibility.
+
+    Window:ShowPanel("Combat")         -- Show panel by name
+    Window:HidePanel("Combat")         -- Hide panel (or click same panel again)
+
+NOTES:
+- ShowPanel automatically hides the previous panel
+- Clicking the same panel button toggles its visibility
+
+=================================================================
+15. TOGGLE KEY (AddToggleKey)
+=================================================================
+Add a keybind to show/hide the entire GUI.
+
+SYNTAX:
+    Window:AddToggleKey(Enum.KeyCode.RightShift)
+
+DEFAULT: Right Shift key
+
+EXAMPLE:
+    -- Toggle GUI with Right Shift
+    Window:AddToggleKey(Enum.KeyCode.RightShift)
+    
+    -- Or use a different key
+    Window:AddToggleKey(Enum.KeyCode.Insert)
+
+=================================================================
+16. MOBILE DETECTION
+=================================================================
+Check if running on mobile/touch device:
+
+    if UILib.IsMobile then
+        -- Mobile-specific code
+    end
+
+This is determined by:
+    UserInputService.TouchEnabled and not UserInputService.MouseEnabled
+
+=================================================================
+17. SIZING SYSTEM
+=================================================================
+UILib automatically adjusts sizes for mobile vs desktop.
+
+GET CURRENT SIZES:
+    local sizes = UILib:GetSizes()
+
+DESKTOP SIZES (UILib.DesktopSizes):
+    SelectorWidth = 220
+    SelectorHeight = 375
+    PanelWidth = 340
+    PanelHeight = 530
+    HeaderTextSize = 18
+    LabelTextSize = 16
+    ToggleTrackWidth = 90
+    ToggleTrackHeight = 40
+    ToggleBallSize = 34
+    SliderWidth = 200
+    ButtonPadding = 10
+    ContentPadding = 20
+
+MOBILE SIZES (UILib.MobileSizes):
+    SelectorWidth = 160
+    SelectorHeight = 300
+    PanelWidth = 260
+    PanelHeight = 300
+    HeaderTextSize = 14
+    LabelTextSize = 14
+    ToggleTrackWidth = 70
+    ToggleTrackHeight = 35
+    ToggleBallSize = 30
+    SliderWidth = 160
+    ButtonPadding = 8
+    ContentPadding = 15
+
+=================================================================
+18. SAVING/SYNCING UI STATE
+=================================================================
+When building a config system, register UI elements in tables for syncing:
+
+REGISTRY PATTERN:
+    local Toggles = {}      -- Store toggle references
+    local Sliders = {}      -- Store slider references
+    local Dropdowns = {}    -- Store dropdown references
+    local TextInputs = {}   -- Store text input references
+
+CREATING WITH REGISTRY:
+    Toggles.Aimbot = UILib:CreateToggle(Panel, {
+        Label = "Aimbot",
+        Default = Config.Aimbot,
+        Callback = function(state)
+            Config.Aimbot = state
+        end
+    })
+    
+    Sliders.AimbotFOV = UILib:CreateSlider(Panel, {
+        Text = "Aimbot FOV",
+        Min = 50, Max = 800,
+        Default = Config.AimbotFOV,
+        Callback = function(value)
+            Config.AimbotFOV = value
+        end
+    })
+
+SYNCING FROM CONFIG (after loading saved config):
+    local function SyncToggles()
+        for key, toggle in pairs(Toggles) do
+            if toggle and toggle.SetState and Config[key] ~= nil then
+                pcall(function()
+                    toggle.SetState(Config[key])
+                end)
+            end
+        end
+        
+        for key, slider in pairs(Sliders) do
+            if slider and slider.SetValue and Config[key] ~= nil then
+                pcall(function()
+                    slider.SetValue(Config[key])
+                end)
+            end
+        end
+        
+        for key, dropdown in pairs(Dropdowns) do
+            if dropdown and dropdown.SetValue and Config[key] ~= nil then
+                pcall(function()
+                    dropdown.SetValue(Config[key])
+                end)
+            end
+        end
+    end
+
+=================================================================
+19. COMMON PATTERNS
+=================================================================
+
+PATTERN: Simple Toggle with Config
+    Toggles.FeatureName = UILib:CreateToggle(Panel, {
+        Label = "Feature Name",
+        Default = Config.FeatureName,
+        Callback = function(state)
+            Config.FeatureName = state
+            -- Additional logic here
+        end
+    })
+
+PATTERN: Slider with Live Update
+    UILib:CreateSlider(Panel, {
+        Text = "Walk Speed",
+        Min = 16, Max = 100,
+        Default = Config.WalkSpeed,
+        Callback = function(value)
+            Config.WalkSpeed = value
+            local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+            if hum then hum.WalkSpeed = value end
+        end
+    })
+
+PATTERN: Player Teleport Dropdown
+    local function getPlayerList()
+        local list = {}
+        for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
+            if p ~= LocalPlayer then
+                table.insert(list, p.Name)
+            end
+        end
+        return list
+    end
+    
+    local TeleportDropdown = UILib:CreateDropdown(Panel, {
+        Label = "Teleport to Player",
+        Options = getPlayerList(),
+        Callback = function(selected)
+            teleportToPlayer(selected)
+        end
+    })
+    
+    -- Refresh player list periodically:
+    task.spawn(function()
+        while true do
+            task.wait(5)
+            TeleportDropdown.UpdateOptions(getPlayerList())
+        end
+    end)
+
+PATTERN: Save/Load Config Buttons
+    UILib:CreateButton(SettingsPanel, {
+        Text = "Save Config",
+        Color = UILib.Colors.SUCCESS,
+        Callback = function()
+            SaveConfigAs("default")
+            UILib:CreateNotification({Text = "Config saved!", Duration = 2})
+        end
+    })
+    
+    UILib:CreateButton(SettingsPanel, {
+        Text = "Load Config",
+        Color = Color3.fromRGB(88, 101, 242),
+        Callback = function()
+            LoadConfigByName("default")
+            SyncToggles() -- Sync UI with loaded config
+            UILib:CreateNotification({Text = "Config loaded!", Duration = 2})
+        end
+    })
+
+=================================================================
+20. UNIVERSAL ESP (UILib.ESP)
+=================================================================
+Performs Universal ESP for Players (Health/Role/Distance) and Items.
+Includes built-in Highlights and BillboardGuis.
+
+CONFIGURATION:
+    UILib.ESP.Config = {
+        Enabled = false,              -- Master switch (use Toggle())
+        
+        -- Player Settings
+        PlayerESP = true,             -- Enable Player Visuals
+        ShowName = true,              -- Show Player Name
+        ShowRole = true,              -- Show Team/Role Name
+        ShowHealth = true,            -- Show Health (Green/Orange/Red)
+        ShowItems = false,            -- Show Equipped Item
+        ShowDistance = false,         -- Show Distance from LocalPlayer
+        UseTeamColors = true,         -- Use TeamColor for Highlights/Text
+        
+        -- Item Settings
+        ItemESP = false,              -- Enable Item Visuals
+        ItemDistance = 150,           -- Max distance for Items
+        ShowItemName = true,          -- Show Item Name
+        
+        -- Colors
+        EnemyColor = Color3.fromRGB(255, 0, 0),
+        AllyColor = Color3.fromRGB(0, 255, 0),
+        ItemColor = Color3.fromRGB(255, 255, 0)
+    }
+
+METHODS:
+    - UILib.ESP:Toggle(bool)          -- Enable/Disable the entire system
+    - UILib.ESP:Update()              -- Force a visual update (called automatically loop)
+
+USAGE EXAMPLE:
+    -- 1. Configure Settings
+    UILib.ESP.Config.PlayerESP = true
+    UILib.ESP.Config.ShowHealth = true
+    
+    -- 2. Hook up to UI Toggles
+    Toggles.PlayerESP = UILib:CreateToggle(VisualsPanel, {
+        Label = "Player ESP",
+        Default = false,
+        Callback = function(state)
+            UILib.ESP.Config.PlayerESP = state
+            UILib.ESP:Toggle(true) -- Ensure system is running
+        end
+    })
+    
+    -- 3. Start System
+    UILib.ESP:Toggle(true)
+
+=================================================================
+
+                       END OF MANUAL
+=================================================================
+This manual is intended for AI assistants to reference when
+modifying scripts that use the JPUFF UILib.
+
+Repository: https://github.com/ncmpuff/UILib
+Version: 1.0.2
+=================================================================
+]]
