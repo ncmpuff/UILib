@@ -366,6 +366,7 @@ function UILib:CreateWindow(config)
     screenGui.Name = winName
     screenGui.ResetOnSpawn = false
     screenGui.DisplayOrder = config.DisplayOrder or 10000
+    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     screenGui.Enabled = true
 
     local window = {
@@ -528,6 +529,7 @@ function UILib:CreatePanel(window, config)
     panelFrame.Active = true
     panelFrame.BackgroundTransparency = 1
     panelFrame.Visible = false
+    panelFrame.ClipsDescendants = true
     Instance.new("UICorner", panelFrame).CornerRadius = UDim.new(0, 20)
 
     local panelStroke = Instance.new("UIStroke", panelFrame)
@@ -719,8 +721,13 @@ function UILib:ShowPanel(window, panelName)
             end
             TweenService:Create(child, TweenInfo.new(0.5), {BackgroundTransparency = goalBg}):Play()
         end
-        if child:IsA("ImageLabel") then
-            TweenService:Create(child, TweenInfo.new(0.5), {ImageTransparency = 0}):Play()
+        if child:IsA("ScrollingFrame") then
+            -- Skip: ScrollingFrame should stay transparent
+        elseif child:IsA("ImageLabel") then
+            -- Skip toggle icons (they manage their own transparency based on state)
+            if child.Name ~= "ImgOn" and child.Name ~= "ImgOff" then
+                TweenService:Create(child, TweenInfo.new(0.5), {ImageTransparency = 0}):Play()
+            end
         end
     end
 end
@@ -781,6 +788,7 @@ function UILib:CreateToggle(panel, config)
     track.BackgroundColor3 = initialState and UILib.Colors.JPUFF_HOT_PINK or UILib.Colors.TOGGLE_OFF
     track.BorderSizePixel = 0
     track.BackgroundTransparency = 0
+    track.ClipsDescendants = true
     Instance.new("UICorner", track).CornerRadius = UDim.new(1, 0)
 
     local ballBg = Instance.new("Frame", track)
@@ -792,45 +800,38 @@ function UILib:CreateToggle(panel, config)
     ballBg.BackgroundColor3 = UILib.Colors.TOGGLE_OFF
     ballBg.BackgroundTransparency = 1
     ballBg.BorderSizePixel = 0
+    ballBg.ClipsDescendants = true
     Instance.new("UICorner", ballBg).CornerRadius = UDim.new(1, 0)
 
     -- OFF IMAGE (Sleep)
     local imgOff = Instance.new("ImageLabel", ballBg)
     imgOff.Name = "ImgOff"
-    imgOff.Size = UDim2.fromScale(1.2, 1.2)
-    imgOff.Position = UDim2.fromScale(-0.1, -0.1)
+    imgOff.Size = UDim2.fromScale(1, 1)
+    imgOff.Position = UDim2.fromScale(0, 0)
     imgOff.BackgroundTransparency = 1
     imgOff.Image = "rbxthumb://type=Asset&id=134295060007569&w=150&h=150"
     imgOff.ScaleType = Enum.ScaleType.Crop
     imgOff.BorderSizePixel = 0
-    imgOff.ZIndex = 2
     Instance.new("UICorner", imgOff).CornerRadius = UDim.new(1, 0)
 
     -- ON IMAGE (Awake)
     local imgOn = Instance.new("ImageLabel", ballBg)
     imgOn.Name = "ImgOn"
-    imgOn.Size = UDim2.fromScale(1.2, 1.2)
-    imgOn.Position = UDim2.fromScale(-0.1, -0.1)
+    imgOn.Size = UDim2.fromScale(1, 1)
+    imgOn.Position = UDim2.fromScale(0, 0)
     imgOn.BackgroundTransparency = 1
     imgOn.Image = "rbxthumb://type=Asset&id=111028440784816&w=150&h=150"
     imgOn.ScaleType = Enum.ScaleType.Crop
     imgOn.BorderSizePixel = 0
-    imgOn.ZIndex = 2
     Instance.new("UICorner", imgOn).CornerRadius = UDim.new(1, 0)
 
-    -- Set initial transparency - KEEP BOTH ICONS ALWAYS VISIBLE
-    -- Control visibility purely through ImageTransparency
-    imgOn.Visible = true
-    imgOff.Visible = true
-    
+    -- Set initial visibility
     if initialState then
-        -- ON state: show imgOn, hide imgOff
-        imgOn.ImageTransparency = 0
-        imgOff.ImageTransparency = 1
+        imgOn.Visible = true
+        imgOff.Visible = false
     else
-        -- OFF state: hide imgOn, show imgOff
-        imgOn.ImageTransparency = 1
-        imgOff.ImageTransparency = 0
+        imgOn.Visible = false
+        imgOff.Visible = true
     end
 
     local button = Instance.new("TextButton", track)
@@ -848,17 +849,6 @@ function UILib:CreateToggle(panel, config)
 
         local oldState = state
         state = not state
-        
-
-        -- Keep both icons ALWAYS visible but set correct starting transparency
-        imgOn.Visible = true
-        imgOff.Visible = true
-        
-        -- Set STARTING transparency based on OLD state (where we're coming from)
-        imgOn.ImageTransparency = oldState and 0 or 1
-        imgOff.ImageTransparency = oldState and 1 or 0
-        
-
 
         -- Animate track color
         TweenService:Create(track, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
@@ -874,19 +864,16 @@ function UILib:CreateToggle(panel, config)
         TweenService:Create(ballBg, TweenInfo.new(0.65, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), 
             {Rotation = accumulatedRotation}):Play()
 
-        local targetOnTransparency = state and 0 or 1
-        local targetOffTransparency = state and 1 or 0
-
-
-        -- Animate to TARGET transparency based on NEW state (where we're going)
-        TweenService:Create(imgOn, TweenInfo.new(0.65, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), 
-            {ImageTransparency = targetOnTransparency}):Play()
-        TweenService:Create(imgOff, TweenInfo.new(0.65, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), 
-            {ImageTransparency = targetOffTransparency}):Play()
+        -- Swap icon at midpoint of spin (no tweening ImageLabels to avoid clipping bugs)
+        task.delay(0.3, function()
+            imgOn.Visible = state and true or false
+            imgOff.Visible = state and false or true
+        end)
 
         task.delay(0.65, function()
             isAnimating = false
-
+            ballBg.Rotation = 0
+            accumulatedRotation = 0
         end)
 
         -- Call callback and check if it returns false to cancel
@@ -898,8 +885,8 @@ function UILib:CreateToggle(panel, config)
             task.wait(0.05)
             track.BackgroundColor3 = state and UILib.Colors.JPUFF_HOT_PINK or UILib.Colors.TOGGLE_OFF
             ballBg.Position = state and UDim2.fromOffset(70, 20) or UDim2.fromOffset(20, 20)
-            imgOn.ImageTransparency = state and 0 or 1
-            imgOff.ImageTransparency = state and 1 or 0
+            imgOn.Visible = state and true or false
+            imgOff.Visible = state and false or true
         end
         return state
     end
@@ -926,8 +913,8 @@ function UILib:CreateToggle(panel, config)
             local ballOnPos = sizes.ToggleTrackWidth - (sizes.ToggleBallSize / 2) - 3
             local ballOffPos = sizes.ToggleBallSize / 2 + 3
             ballBg.Position = state and UDim2.fromOffset(ballOnPos, sizes.ToggleTrackHeight / 2) or UDim2.fromOffset(ballOffPos, sizes.ToggleTrackHeight / 2)
-            imgOn.ImageTransparency = state and 0 or 1
-            imgOff.ImageTransparency = state and 1 or 0
+            imgOn.Visible = state and true or false
+            imgOff.Visible = state and false or true
         end,
         -- Direct access to track for custom styling
         Track = track,
