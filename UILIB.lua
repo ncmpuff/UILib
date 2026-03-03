@@ -375,6 +375,8 @@ function UILib:CreateWindow(config)
         CurrentPanel = nil,
         AccentColor = accentColor,
         SelectorFrame = nil,
+        IsMinimized = false,
+        StoredPanelName = nil,
     }
 
     -- Create selector frame (left panel) - responsive size
@@ -405,9 +407,9 @@ function UILib:CreateWindow(config)
     selectorHeader.TextTransparency = 1
 
     -- Buttons container - responsive height (ScrollingFrame for scrollable panel list)
-    local containerHeight = sizes.SelectorHeight - 60
+    local actionBarHeight = self.IsMobile and 34 or 38
     local selectorButtonsContainer = Instance.new("ScrollingFrame", selectorFrame)
-    selectorButtonsContainer.Size = UDim2.new(1, -20, 0, containerHeight)
+    selectorButtonsContainer.Size = UDim2.new(1, -20, 1, -(55 + actionBarHeight + 20))
     selectorButtonsContainer.Position = UDim2.fromOffset(10, 55)
     selectorButtonsContainer.BackgroundTransparency = 1
     selectorButtonsContainer.BorderSizePixel = 0
@@ -429,10 +431,42 @@ function UILib:CreateWindow(config)
         selectorButtonsContainer.CanvasSize = UDim2.fromOffset(0, selectorListLayout.AbsoluteContentSize.Y + 10)
     end)
 
+    -- Bottom action bar
+    local actionBar = Instance.new("Frame", selectorFrame)
+    actionBar.Size = UDim2.new(1, -20, 0, actionBarHeight)
+    actionBar.Position = UDim2.new(0, 10, 1, -(actionBarHeight + 10))
+    actionBar.BackgroundTransparency = 1
+
+    local minimizeBtn = Instance.new("TextButton", actionBar)
+    minimizeBtn.Size = UDim2.new(0.5, -4, 1, 0)
+    minimizeBtn.Position = UDim2.fromOffset(0, 0)
+    minimizeBtn.BackgroundColor3 = self.Colors.BG_CARD
+    minimizeBtn.BorderSizePixel = 0
+    minimizeBtn.Text = "Minimize"
+    minimizeBtn.Font = Enum.Font.GothamBold
+    minimizeBtn.TextSize = sizes.LabelTextSize
+    minimizeBtn.TextColor3 = self.Colors.TEXT_PRIMARY
+    minimizeBtn.AutoButtonColor = true
+    Instance.new("UICorner", minimizeBtn).CornerRadius = UDim.new(0, 10)
+
+    local closeBtn = Instance.new("TextButton", actionBar)
+    closeBtn.Size = UDim2.new(0.5, -4, 1, 0)
+    closeBtn.Position = UDim2.fromOffset(0, 0)
+    closeBtn.BackgroundColor3 = self.Colors.ERROR
+    closeBtn.BorderSizePixel = 0
+    closeBtn.Text = "Close"
+    closeBtn.Font = Enum.Font.GothamBold
+    closeBtn.TextSize = sizes.LabelTextSize
+    closeBtn.TextColor3 = self.Colors.TEXT_PRIMARY
+    closeBtn.AutoButtonColor = true
+    Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 10)
+
     window.SelectorFrame = selectorFrame
     window.SelectorButtonsContainer = selectorButtonsContainer
     window.SelectorStroke = selectorStroke
     window.SelectorHeader = selectorHeader
+    window.MinimizeButton = minimizeBtn
+    window.CloseButton = closeBtn
 
     -- Custom Drag Logic with Panel Sync
     local dragging, dragInput, dragStart, startPos
@@ -495,6 +529,39 @@ function UILib:CreateWindow(config)
 
     -- Attach methods to window
     UILib:AddMethods(window)
+
+    window.ToggleMinimize = function(self)
+        self.IsMinimized = not self.IsMinimized
+        selectorButtonsContainer.Visible = not self.IsMinimized
+
+        if self.IsMinimized then
+            self.StoredPanelName = self.CurrentPanel
+            if self.StoredPanelName and self.Panels[self.StoredPanelName] and self.Panels[self.StoredPanelName].Frame then
+                self.Panels[self.StoredPanelName].Frame.Visible = false
+            end
+            minimizeBtn.Text = "Restore"
+            TweenService:Create(selectorFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Size = UDim2.fromOffset(sizes.SelectorWidth, 100)
+            }):Play()
+        else
+            if self.StoredPanelName and self.Panels[self.StoredPanelName] and self.Panels[self.StoredPanelName].Frame then
+                self.Panels[self.StoredPanelName].Frame.Visible = true
+            end
+            self.StoredPanelName = nil
+            minimizeBtn.Text = "Minimize"
+            TweenService:Create(selectorFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Size = UDim2.fromOffset(sizes.SelectorWidth, sizes.SelectorHeight)
+            }):Play()
+        end
+    end
+
+    minimizeBtn.MouseButton1Click:Connect(function()
+        window:ToggleMinimize()
+    end)
+
+    closeBtn.MouseButton1Click:Connect(function()
+        window:Destroy()
+    end)
 
     -- Fade in animation
     task.spawn(function()
@@ -2635,4 +2702,3 @@ function UILib.ESP:Toggle(state)
 end
 
 return UILib
-
