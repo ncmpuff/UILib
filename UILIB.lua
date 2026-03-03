@@ -407,7 +407,9 @@ function UILib:CreateWindow(config)
     selectorHeader.TextTransparency = 1
 
     -- Buttons container - responsive height (ScrollingFrame for scrollable panel list)
-    local actionBarHeight = self.IsMobile and 34 or 38
+    local controlBtnSize = self.IsMobile and 36 or 32
+    local closeBtnSize = controlBtnSize - 4
+    local actionBarHeight = math.max(controlBtnSize, closeBtnSize)
     local selectorButtonsContainer = Instance.new("ScrollingFrame", selectorFrame)
     selectorButtonsContainer.Size = UDim2.new(1, -20, 1, -(55 + actionBarHeight + 20))
     selectorButtonsContainer.Position = UDim2.fromOffset(10, 55)
@@ -434,32 +436,46 @@ function UILib:CreateWindow(config)
     -- Bottom action bar
     local actionBar = Instance.new("Frame", selectorFrame)
     actionBar.Size = UDim2.new(1, -20, 0, actionBarHeight)
-    actionBar.Position = UDim2.new(0, 10, 1, -(actionBarHeight + 10))
+    actionBar.Position = UDim2.new(0, 10, 1, -(actionBarHeight + 8))
     actionBar.BackgroundTransparency = 1
 
     local minimizeBtn = Instance.new("TextButton", actionBar)
-    minimizeBtn.Size = UDim2.new(0.5, -4, 1, 0)
-    minimizeBtn.Position = UDim2.fromOffset(0, 0)
-    minimizeBtn.BackgroundColor3 = self.Colors.BG_CARD
+    minimizeBtn.Size = UDim2.fromOffset(controlBtnSize, controlBtnSize)
+    minimizeBtn.Position = UDim2.fromOffset(0, math.floor((actionBarHeight - controlBtnSize) / 2))
+    minimizeBtn.BackgroundTransparency = 1
     minimizeBtn.BorderSizePixel = 0
-    minimizeBtn.Text = "Minimize"
+    minimizeBtn.Text = "-"
     minimizeBtn.Font = Enum.Font.GothamBold
-    minimizeBtn.TextSize = sizes.LabelTextSize
-    minimizeBtn.TextColor3 = self.Colors.TEXT_PRIMARY
-    minimizeBtn.AutoButtonColor = true
-    Instance.new("UICorner", minimizeBtn).CornerRadius = UDim.new(0, 10)
+    minimizeBtn.TextSize = controlBtnSize - 6
+    minimizeBtn.TextColor3 = accentColor
+    minimizeBtn.AutoButtonColor = false
 
     local closeBtn = Instance.new("TextButton", actionBar)
-    closeBtn.Size = UDim2.new(0.5, -4, 1, 0)
-    closeBtn.Position = UDim2.fromOffset(0, 0)
-    closeBtn.BackgroundColor3 = self.Colors.ERROR
+    closeBtn.Size = UDim2.fromOffset(closeBtnSize, closeBtnSize)
+    closeBtn.Position = UDim2.new(1, -closeBtnSize, 0, math.floor((actionBarHeight - closeBtnSize) / 2))
+    closeBtn.BackgroundTransparency = 1
     closeBtn.BorderSizePixel = 0
-    closeBtn.Text = "Close"
+    closeBtn.Text = "X"
     closeBtn.Font = Enum.Font.GothamBold
-    closeBtn.TextSize = sizes.LabelTextSize
-    closeBtn.TextColor3 = self.Colors.TEXT_PRIMARY
-    closeBtn.AutoButtonColor = true
-    Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 10)
+    closeBtn.TextSize = closeBtnSize - 10
+    closeBtn.TextColor3 = accentColor
+    closeBtn.AutoButtonColor = false
+
+    local function connectControlHover(button)
+        button.MouseEnter:Connect(function()
+            TweenService:Create(button, TweenInfo.new(0.2), {
+                TextColor3 = UILib.Colors.TEXT_PRIMARY
+            }):Play()
+        end)
+        button.MouseLeave:Connect(function()
+            TweenService:Create(button, TweenInfo.new(0.2), {
+                TextColor3 = accentColor
+            }):Play()
+        end)
+    end
+
+    connectControlHover(minimizeBtn)
+    connectControlHover(closeBtn)
 
     window.SelectorFrame = selectorFrame
     window.SelectorButtonsContainer = selectorButtonsContainer
@@ -539,7 +555,6 @@ function UILib:CreateWindow(config)
             if self.StoredPanelName and self.Panels[self.StoredPanelName] and self.Panels[self.StoredPanelName].Frame then
                 self.Panels[self.StoredPanelName].Frame.Visible = false
             end
-            minimizeBtn.Text = "Restore"
             TweenService:Create(selectorFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
                 Size = UDim2.fromOffset(sizes.SelectorWidth, 100)
             }):Play()
@@ -548,7 +563,6 @@ function UILib:CreateWindow(config)
                 self.Panels[self.StoredPanelName].Frame.Visible = true
             end
             self.StoredPanelName = nil
-            minimizeBtn.Text = "Minimize"
             TweenService:Create(selectorFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
                 Size = UDim2.fromOffset(sizes.SelectorWidth, sizes.SelectorHeight)
             }):Play()
