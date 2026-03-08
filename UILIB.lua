@@ -115,6 +115,12 @@ UILib.MobileSizes = {
     -- Spacing
     ButtonPadding = 8,
     ContentPadding = 15,
+    
+    -- Help Menu
+    HelpMenuWidth = 260,
+    HelpMenuHeight = 240,
+    HelpTitleSize = 18,
+    HelpDescSize = 12,
 }
 
 -- Desktop sizing (defaults)
@@ -139,6 +145,12 @@ UILib.DesktopSizes = {
     
     ButtonPadding = 10,
     ContentPadding = 20,
+    
+    -- Help Menu
+    HelpMenuWidth = 400,
+    HelpMenuHeight = 310,
+    HelpTitleSize = 20,
+    HelpDescSize = 14,
 }
 
 -- Helper to get current platform sizes
@@ -415,7 +427,7 @@ function UILib:CreateWindow(config)
         helpBtn.Text = "?"
         helpBtn.Font = Enum.Font.GothamBold
         helpBtn.TextSize = sizes.HeaderTextSize
-        helpBtn.TextColor3 = accentColor
+        helpBtn.TextColor3 = self.Colors.JPUFF_PINK
         helpBtn.TextTransparency = 1
 
         -- Help Menu Popup
@@ -427,7 +439,7 @@ function UILib:CreateWindow(config)
         helpOverlay.ZIndex = 50
 
         local helpMenu = Instance.new("Frame", helpOverlay)
-        helpMenu.Size = UDim2.fromOffset(400, 300)
+        helpMenu.Size = UDim2.fromOffset(sizes.HelpMenuWidth, sizes.HelpMenuHeight)
         helpMenu.Position = UDim2.fromScale(0.5, -0.5) -- Start Above screen
         helpMenu.AnchorPoint = Vector2.new(0.5, 0.5)
         helpMenu.BackgroundColor3 = UILib.Colors.BG_CARD
@@ -436,7 +448,7 @@ function UILib:CreateWindow(config)
         Instance.new("UICorner", helpMenu).CornerRadius = UDim.new(0, 15)
         
         local helpStroke = Instance.new("UIStroke", helpMenu)
-        helpStroke.Color = accentColor
+        helpStroke.Color = self.Colors.JPUFF_PINK
         helpStroke.Thickness = 2
         
         local helpTitle = Instance.new("TextLabel", helpMenu)
@@ -444,8 +456,8 @@ function UILib:CreateWindow(config)
         helpTitle.BackgroundTransparency = 1
         helpTitle.Text = "How to use"
         helpTitle.Font = Enum.Font.GothamBold
-        helpTitle.TextSize = 20
-        helpTitle.TextColor3 = accentColor
+        helpTitle.TextSize = sizes.HelpTitleSize
+        helpTitle.TextColor3 = self.Colors.JPUFF_PINK
         helpTitle.ZIndex = 52
 
         local helpDesc = Instance.new("TextLabel", helpMenu)
@@ -454,7 +466,7 @@ function UILib:CreateWindow(config)
         helpDesc.BackgroundTransparency = 1
         helpDesc.Text = config.HelpText
         helpDesc.Font = Enum.Font.GothamMedium
-        helpDesc.TextSize = 14
+        helpDesc.TextSize = sizes.HelpDescSize
         helpDesc.TextColor3 = UILib.Colors.TEXT_PRIMARY
         helpDesc.TextWrapped = true
         helpDesc.TextXAlignment = Enum.TextXAlignment.Left
@@ -464,7 +476,7 @@ function UILib:CreateWindow(config)
         local closeHelpBtn = Instance.new("TextButton", helpMenu)
         closeHelpBtn.Size = UDim2.new(0, 120, 0, 40)
         closeHelpBtn.Position = UDim2.new(0.5, -60, 1, -50)
-        closeHelpBtn.BackgroundColor3 = accentColor
+        closeHelpBtn.BackgroundColor3 = self.Colors.JPUFF_PINK
         closeHelpBtn.Text = "Got it!"
         closeHelpBtn.Font = Enum.Font.GothamBold
         closeHelpBtn.TextSize = 16
@@ -479,7 +491,6 @@ function UILib:CreateWindow(config)
             isHelpOpen = true
             helpOverlay.Visible = true
             
-            TweenService:Create(helpOverlay, TweenInfo.new(0.3), {BackgroundTransparency = 0.5}):Play()
             TweenService:Create(helpMenu, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Position = UDim2.fromScale(0.5, 0.5)}):Play()
         end)
 
@@ -487,7 +498,6 @@ function UILib:CreateWindow(config)
             if not isHelpOpen then return end
             isHelpOpen = false
             
-            TweenService:Create(helpOverlay, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
             local closeTween = TweenService:Create(helpMenu, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Position = UDim2.fromScale(0.5, -0.5)})
             closeTween:Play()
             
@@ -651,7 +661,7 @@ function UILib:CreatePanel(window, config)
         helpBtn.Text = "?"
         helpBtn.Font = Enum.Font.GothamBold
         helpBtn.TextSize = sizes.PanelHeaderTextSize
-        helpBtn.TextColor3 = color
+        helpBtn.TextColor3 = UILib.Colors.JPUFF_PINK
         helpBtn.TextTransparency = 1
 
         -- Help Menu Popup
@@ -663,7 +673,7 @@ function UILib:CreatePanel(window, config)
         helpOverlay.ZIndex = 60
 
         local helpMenu = Instance.new("Frame", helpOverlay)
-        helpMenu.Size = UDim2.fromOffset(400, 300)
+        helpMenu.Size = UDim2.fromOffset(sizes.HelpMenuWidth, sizes.HelpMenuHeight)
         helpMenu.Position = UDim2.fromScale(0.5, -0.5) -- Start Above screen
         helpMenu.AnchorPoint = Vector2.new(0.5, 0.5)
         helpMenu.BackgroundColor3 = UILib.Colors.BG_CARD
@@ -672,7 +682,7 @@ function UILib:CreatePanel(window, config)
         Instance.new("UICorner", helpMenu).CornerRadius = UDim.new(0, 15)
         
         local helpStroke = Instance.new("UIStroke", helpMenu)
-        helpStroke.Color = color
+        helpStroke.Color = UILib.Colors.JPUFF_PINK
         helpStroke.Thickness = 2
         
         local helpTitle = Instance.new("TextLabel", helpMenu)
@@ -680,8 +690,8 @@ function UILib:CreatePanel(window, config)
         helpTitle.BackgroundTransparency = 1
         helpTitle.Text = displayName .. " Help"
         helpTitle.Font = Enum.Font.GothamBold
-        helpTitle.TextSize = 20
-        helpTitle.TextColor3 = color
+        helpTitle.TextSize = sizes.HelpTitleSize
+        helpTitle.TextColor3 = UILib.Colors.JPUFF_PINK
         helpTitle.ZIndex = 62
 
         local helpDesc = Instance.new("TextLabel", helpMenu)
@@ -690,7 +700,7 @@ function UILib:CreatePanel(window, config)
         helpDesc.BackgroundTransparency = 1
         helpDesc.Text = config.HelpText
         helpDesc.Font = Enum.Font.GothamMedium
-        helpDesc.TextSize = 14
+        helpDesc.TextSize = sizes.HelpDescSize
         helpDesc.TextColor3 = UILib.Colors.TEXT_PRIMARY
         helpDesc.TextWrapped = true
         helpDesc.TextXAlignment = Enum.TextXAlignment.Left
@@ -700,7 +710,7 @@ function UILib:CreatePanel(window, config)
         local closeHelpBtn = Instance.new("TextButton", helpMenu)
         closeHelpBtn.Size = UDim2.new(0, 120, 0, 40)
         closeHelpBtn.Position = UDim2.new(0.5, -60, 1, -50)
-        closeHelpBtn.BackgroundColor3 = color
+        closeHelpBtn.BackgroundColor3 = UILib.Colors.JPUFF_PINK
         closeHelpBtn.Text = "Got it!"
         closeHelpBtn.Font = Enum.Font.GothamBold
         closeHelpBtn.TextSize = 16
@@ -715,7 +725,6 @@ function UILib:CreatePanel(window, config)
             isHelpOpen = true
             helpOverlay.Visible = true
             
-            TweenService:Create(helpOverlay, TweenInfo.new(0.3), {BackgroundTransparency = 0.5}):Play()
             TweenService:Create(helpMenu, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Position = UDim2.fromScale(0.5, 0.5)}):Play()
         end)
 
@@ -723,7 +732,6 @@ function UILib:CreatePanel(window, config)
             if not isHelpOpen then return end
             isHelpOpen = false
             
-            TweenService:Create(helpOverlay, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
             local closeTween = TweenService:Create(helpMenu, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Position = UDim2.fromScale(0.5, -0.5)})
             closeTween:Play()
             
