@@ -54,10 +54,6 @@ function UILib:AddMethods(window)
         return UILib:CreateConfirmation(config)
     end
 
-    window.SetHelp = function(self, text)
-        UILib:ApplyHelp(self, "Window", text)
-    end
-
     window.Destroy = function(self)
         if self.DragConnection then
             self.DragConnection:Disconnect()
@@ -353,132 +349,6 @@ function UILib:CreateLoadingScreen(config)
 end
 
 -- =====================================================
--- HELP SYSTEM INTERNAL
--- =====================================================
-
-function UILib:GetHelpOverlay(window)
-    if window.HelpOverlay then return window.HelpOverlay, window.HelpMenu, window.HelpDesc end
-
-    local screenGui = window.ScreenGui
-    local accentColor = window.AccentColor
-
-    local helpOverlay = Instance.new("Frame", screenGui)
-    helpOverlay.Name = "HelpOverlay"
-    helpOverlay.Size = UDim2.fromScale(1, 1)
-    helpOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    helpOverlay.BackgroundTransparency = 1
-    helpOverlay.Visible = false
-    helpOverlay.ZIndex = 500
-
-    local helpMenu = Instance.new("Frame", helpOverlay)
-    helpMenu.Size = UDim2.fromOffset(400, 300)
-    helpMenu.Position = UDim2.fromScale(0.5, -0.5)
-    helpMenu.AnchorPoint = Vector2.new(0.5, 0.5)
-    helpMenu.BackgroundColor3 = UILib.Colors.BG_CARD
-    helpMenu.BorderSizePixel = 0
-    helpMenu.ZIndex = 501
-    Instance.new("UICorner", helpMenu).CornerRadius = UDim.new(0, 15)
-    
-    local helpStroke = Instance.new("UIStroke", helpMenu)
-    helpStroke.Color = accentColor
-    helpStroke.Thickness = 2
-    
-    local helpTitle = Instance.new("TextLabel", helpMenu)
-    helpTitle.Size = UDim2.new(1, 0, 0, 50)
-    helpTitle.BackgroundTransparency = 1
-    helpTitle.Text = "How to use"
-    helpTitle.Font = Enum.Font.GothamBold
-    helpTitle.TextSize = 20
-    helpTitle.TextColor3 = accentColor
-    helpTitle.ZIndex = 502
-
-    local helpDesc = Instance.new("TextLabel", helpMenu)
-    helpDesc.Size = UDim2.new(1, -40, 1, -110)
-    helpDesc.Position = UDim2.fromOffset(20, 50)
-    helpDesc.BackgroundTransparency = 1
-    helpDesc.Text = ""
-    helpDesc.Font = Enum.Font.GothamMedium
-    helpDesc.TextSize = 14
-    helpDesc.TextColor3 = UILib.Colors.TEXT_PRIMARY
-    helpDesc.TextWrapped = true
-    helpDesc.TextXAlignment = Enum.TextXAlignment.Left
-    helpDesc.TextYAlignment = Enum.TextYAlignment.Top
-    helpDesc.ZIndex = 502
-
-    local closeHelpBtn = Instance.new("TextButton", helpMenu)
-    closeHelpBtn.Size = UDim2.new(0, 120, 0, 40)
-    closeHelpBtn.Position = UDim2.new(0.5, -60, 1, -50)
-    closeHelpBtn.BackgroundColor3 = accentColor
-    closeHelpBtn.Text = "Got it!"
-    closeHelpBtn.Font = Enum.Font.GothamBold
-    closeHelpBtn.TextSize = 16
-    closeHelpBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    closeHelpBtn.ZIndex = 502
-    Instance.new("UICorner", closeHelpBtn).CornerRadius = UDim.new(0, 8)
-
-    window.HelpOverlay = helpOverlay
-    window.HelpMenu = helpMenu
-    window.HelpDesc = helpDesc
-
-    closeHelpBtn.MouseButton1Click:Connect(function()
-        window.IsHelpOpen = false
-        TweenService:Create(helpOverlay, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
-        local closeTween = TweenService:Create(helpMenu, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Position = UDim2.fromScale(0.5, -0.5)})
-        closeTween:Play()
-        closeTween.Completed:Connect(function()
-            if not window.IsHelpOpen then
-                helpOverlay.Visible = false
-            end
-        end)
-    end)
-
-    return helpOverlay, helpMenu, helpDesc
-end
-
-function UILib:ApplyHelp(object, type, text)
-    local window = (type == "Window") and object or object.Window
-    local parent = (type == "Window") and object.SelectorFrame or object.Frame
-    local sizes = self:GetSizes()
-    
-    local helpBtn = parent:FindFirstChild("HelpBtn")
-    if not helpBtn then
-        helpBtn = Instance.new("TextButton", parent)
-        helpBtn.Name = "HelpBtn"
-        helpBtn.Size = UDim2.fromOffset(30, 30)
-        helpBtn.AnchorPoint = Vector2.new(1, 0)
-        helpBtn.Position = UDim2.new(1, -10, 0, 15)
-        helpBtn.BackgroundTransparency = 1
-        helpBtn.Text = "?"
-        helpBtn.Font = Enum.Font.GothamBold
-        helpBtn.TextSize = (type == "Window") and sizes.HeaderTextSize or sizes.PanelHeaderTextSize
-        helpBtn.TextColor3 = (type == "Window") and window.AccentColor or object.Color
-        helpBtn.TextTransparency = 0
-        helpBtn.ZIndex = 11
-
-        -- Shrink header to make room
-        if type == "Window" and object.SelectorHeader then
-            object.SelectorHeader.Size = UDim2.new(1, -50, 0, 40)
-        elseif type == "Panel" and parent:FindFirstChildOfClass("TextLabel") then
-            -- Optional: Panel header might also need shrinking, but usually it's left-aligned
-            local panelHeader = parent:FindFirstChildOfClass("TextLabel")
-            if panelHeader and panelHeader.TextXAlignment == Enum.TextXAlignment.Left then
-                panelHeader.Size = UDim2.new(1, -60, 0, 50)
-            end
-        end
-    end
-
-    helpBtn.MouseButton1Click:Connect(function()
-        if window.IsHelpOpen then return end
-        local overlay, menu, desc = self:GetHelpOverlay(window)
-        desc.Text = text
-        window.IsHelpOpen = true
-        overlay.Visible = true
-        TweenService:Create(overlay, TweenInfo.new(0.3), {BackgroundTransparency = 0.5}):Play()
-        TweenService:Create(menu, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Position = UDim2.fromScale(0.5, 0.5)}):Play()
-    end)
-end
-
--- =====================================================
 -- MAIN WINDOW
 -- =====================================================
 function UILib:CreateWindow(config)
@@ -505,6 +375,8 @@ function UILib:CreateWindow(config)
         CurrentPanel = nil,
         AccentColor = accentColor,
         SelectorFrame = nil,
+        IsMinimized = false,
+        StoredPanelName = nil,
     }
 
     -- Create selector frame (left panel) - responsive size
@@ -524,7 +396,7 @@ function UILib:CreateWindow(config)
 
     -- Selector header - responsive text size
     local selectorHeader = Instance.new("TextLabel", selectorFrame)
-    selectorHeader.Size = config.HelpText and UDim2.new(1, -50, 0, 40) or UDim2.new(1, -20, 0, 40)
+    selectorHeader.Size = UDim2.new(1, -20, 0, 40)
     selectorHeader.Position = UDim2.fromOffset(10, 10)
     selectorHeader.BackgroundTransparency = 1
     selectorHeader.Text = title
@@ -534,11 +406,12 @@ function UILib:CreateWindow(config)
     selectorHeader.TextXAlignment = Enum.TextXAlignment.Center
     selectorHeader.TextTransparency = 1
 
-
     -- Buttons container - responsive height (ScrollingFrame for scrollable panel list)
-    local containerHeight = sizes.SelectorHeight - 60
+    local controlBtnSize = self.IsMobile and 36 or 32
+    local closeBtnSize = controlBtnSize - 4
+    local actionBarHeight = math.max(controlBtnSize, closeBtnSize)
     local selectorButtonsContainer = Instance.new("ScrollingFrame", selectorFrame)
-    selectorButtonsContainer.Size = UDim2.new(1, -20, 0, containerHeight)
+    selectorButtonsContainer.Size = UDim2.new(1, -20, 1, -(55 + actionBarHeight + 20))
     selectorButtonsContainer.Position = UDim2.fromOffset(10, 55)
     selectorButtonsContainer.BackgroundTransparency = 1
     selectorButtonsContainer.BorderSizePixel = 0
@@ -560,10 +433,56 @@ function UILib:CreateWindow(config)
         selectorButtonsContainer.CanvasSize = UDim2.fromOffset(0, selectorListLayout.AbsoluteContentSize.Y + 10)
     end)
 
+    -- Bottom action bar
+    local actionBar = Instance.new("Frame", selectorFrame)
+    actionBar.Size = UDim2.new(1, -20, 0, actionBarHeight)
+    actionBar.Position = UDim2.new(0, 10, 1, -(actionBarHeight + 8))
+    actionBar.BackgroundTransparency = 1
+
+    local minimizeBtn = Instance.new("TextButton", actionBar)
+    minimizeBtn.Size = UDim2.fromOffset(controlBtnSize, controlBtnSize)
+    minimizeBtn.Position = UDim2.fromOffset(0, math.floor((actionBarHeight - controlBtnSize) / 2))
+    minimizeBtn.BackgroundTransparency = 1
+    minimizeBtn.BorderSizePixel = 0
+    minimizeBtn.Text = "-"
+    minimizeBtn.Font = Enum.Font.GothamBold
+    minimizeBtn.TextSize = controlBtnSize - 6
+    minimizeBtn.TextColor3 = accentColor
+    minimizeBtn.AutoButtonColor = false
+
+    local closeBtn = Instance.new("TextButton", actionBar)
+    closeBtn.Size = UDim2.fromOffset(closeBtnSize, closeBtnSize)
+    closeBtn.Position = UDim2.new(1, -closeBtnSize, 0, math.floor((actionBarHeight - closeBtnSize) / 2))
+    closeBtn.BackgroundTransparency = 1
+    closeBtn.BorderSizePixel = 0
+    closeBtn.Text = "X"
+    closeBtn.Font = Enum.Font.GothamBold
+    closeBtn.TextSize = closeBtnSize - 10
+    closeBtn.TextColor3 = accentColor
+    closeBtn.AutoButtonColor = false
+
+    local function connectControlHover(button)
+        button.MouseEnter:Connect(function()
+            TweenService:Create(button, TweenInfo.new(0.2), {
+                TextColor3 = UILib.Colors.TEXT_PRIMARY
+            }):Play()
+        end)
+        button.MouseLeave:Connect(function()
+            TweenService:Create(button, TweenInfo.new(0.2), {
+                TextColor3 = accentColor
+            }):Play()
+        end)
+    end
+
+    connectControlHover(minimizeBtn)
+    connectControlHover(closeBtn)
+
     window.SelectorFrame = selectorFrame
     window.SelectorButtonsContainer = selectorButtonsContainer
     window.SelectorStroke = selectorStroke
     window.SelectorHeader = selectorHeader
+    window.MinimizeButton = minimizeBtn
+    window.CloseButton = closeBtn
 
     -- Custom Drag Logic with Panel Sync
     local dragging, dragInput, dragStart, startPos
@@ -627,10 +546,36 @@ function UILib:CreateWindow(config)
     -- Attach methods to window
     UILib:AddMethods(window)
 
-    -- Help system integration (Support config.HelpText for backward compatibility)
-    if config.HelpText then
-        window:SetHelp(config.HelpText)
+    window.ToggleMinimize = function(self)
+        self.IsMinimized = not self.IsMinimized
+        selectorButtonsContainer.Visible = not self.IsMinimized
+
+        if self.IsMinimized then
+            self.StoredPanelName = self.CurrentPanel
+            if self.StoredPanelName and self.Panels[self.StoredPanelName] and self.Panels[self.StoredPanelName].Frame then
+                self.Panels[self.StoredPanelName].Frame.Visible = false
+            end
+            TweenService:Create(selectorFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Size = UDim2.fromOffset(sizes.SelectorWidth, 100)
+            }):Play()
+        else
+            if self.StoredPanelName and self.Panels[self.StoredPanelName] and self.Panels[self.StoredPanelName].Frame then
+                self.Panels[self.StoredPanelName].Frame.Visible = true
+            end
+            self.StoredPanelName = nil
+            TweenService:Create(selectorFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Size = UDim2.fromOffset(sizes.SelectorWidth, sizes.SelectorHeight)
+            }):Play()
+        end
     end
+
+    minimizeBtn.MouseButton1Click:Connect(function()
+        window:ToggleMinimize()
+    end)
+
+    closeBtn.MouseButton1Click:Connect(function()
+        window:Destroy()
+    end)
 
     -- Fade in animation
     task.spawn(function()
@@ -638,11 +583,6 @@ function UILib:CreateWindow(config)
         TweenService:Create(selectorFrame, TweenInfo.new(0.6), {BackgroundTransparency = 0.15}):Play()
         TweenService:Create(selectorStroke, TweenInfo.new(0.6), {Transparency = 0.5}):Play()
         TweenService:Create(selectorHeader, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
-        
-        local hBtn = selectorFrame:FindFirstChild("HelpBtn")
-        if hBtn then
-            TweenService:Create(hBtn, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
-        end
     end)
 
     return window
@@ -674,7 +614,7 @@ function UILib:CreatePanel(window, config)
     Instance.new("UICorner", panelFrame).CornerRadius = UDim.new(0, 20)
 
     local panelStroke = Instance.new("UIStroke", panelFrame)
-    panelStroke.Color = color
+    panelStroke.Color = UILib.Colors.JPUFF_PINK
     panelStroke.Thickness = 2
     panelStroke.Transparency = 1
 
@@ -686,7 +626,7 @@ function UILib:CreatePanel(window, config)
     panelHeader.Text = displayName
     panelHeader.Font = Enum.Font.GothamBold
     panelHeader.TextSize = sizes.PanelHeaderTextSize
-    panelHeader.TextColor3 = color
+    panelHeader.TextColor3 = UILib.Colors.JPUFF_PINK
     panelHeader.TextXAlignment = Enum.TextXAlignment.Left
     panelHeader.TextTransparency = 1
 
@@ -694,7 +634,7 @@ function UILib:CreatePanel(window, config)
     local panelDivider = Instance.new("Frame", panelFrame)
     panelDivider.Size = UDim2.new(1, -(sizes.ContentPadding * 2), 0, 2)
     panelDivider.Position = UDim2.fromOffset(sizes.ContentPadding, 70)
-    panelDivider.BackgroundColor3 = color
+    panelDivider.BackgroundColor3 = UILib.Colors.JPUFF_PINK
     panelDivider.BorderSizePixel = 0
     panelDivider.BackgroundTransparency = 1
     Instance.new("UICorner", panelDivider).CornerRadius = UDim.new(1, 0)
@@ -706,7 +646,7 @@ function UILib:CreatePanel(window, config)
     scrollingFrame.BackgroundTransparency = 1
     scrollingFrame.BorderSizePixel = 0
     scrollingFrame.ScrollBarThickness = 6
-    scrollingFrame.ScrollBarImageColor3 = color
+    scrollingFrame.ScrollBarImageColor3 = UILib.Colors.JPUFF_PINK
     scrollingFrame.CanvasSize = UDim2.fromOffset(0, 0) -- Will auto-adjust
     scrollingFrame.ScrollingDirection = Enum.ScrollingDirection.Y
     scrollingFrame.ClipsDescendants = true
@@ -765,7 +705,6 @@ function UILib:CreatePanel(window, config)
     end)
 
     local panel = {
-        Window = window, -- Store reference to window for help overlay
         Name = name,
         Frame = panelFrame,
         ScrollingFrame = scrollingFrame,
@@ -778,9 +717,6 @@ function UILib:CreatePanel(window, config)
         UpdateCanvasSize = function(self)
             -- Auto-adjust canvas size based on ContentY
             scrollingFrame.CanvasSize = UDim2.fromOffset(0, math.max(self.ContentY + 20, scrollingFrame.AbsoluteSize.Y or 400))
-        end,
-        SetHelp = function(self, text)
-            UILib:ApplyHelp(self, "Panel", text)
         end
     }
 
@@ -2780,4 +2716,3 @@ function UILib.ESP:Toggle(state)
 end
 
 return UILib
-
