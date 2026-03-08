@@ -110,7 +110,8 @@ SYNTAX:
         DisplayName = "Combat Tab",   -- Display name (optional, defaults to Name)
         Color = Color3,               -- Optional: Panel accent color
         LayoutOrder = 1,              -- Optional: Order in selector list
-        Size = UDim2                  -- Optional: Custom panel size
+        Size = UDim2,                 -- Optional: Custom panel size
+        HelpText = "Desc here..."     -- Optional: Help tutorial text for this panel
     })
 
 RETURNS: Panel object with these properties/methods:
