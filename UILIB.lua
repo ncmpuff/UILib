@@ -18,6 +18,7 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
+local GuiService = game:GetService("GuiService")
 
 -- Wait for player to load
 local player = Players.LocalPlayer or Players:GetPropertyChangedSignal("LocalPlayer"):Wait() and Players.LocalPlayer
@@ -54,6 +55,20 @@ function UILib:AddMethods(window)
         return UILib:CreateConfirmation(config)
     end
 
+    -- Help System
+    window.AddHelpTab = function(self, title, body, bodyID)
+        UILib:AddHelpTab(self, title, body, bodyID)
+    end
+
+    -- Localization System
+    window.SetLocalization = function(self, translationTable)
+        UILib:SetLocalization(self, translationTable)
+    end
+
+    window.ToggleLocalization = function(self)
+        UILib:ToggleLocalization(self)
+    end
+
     window.Destroy = function(self)
         if self.DragConnection then
             self.DragConnection:Disconnect()
@@ -62,6 +77,390 @@ function UILib:AddMethods(window)
         if self.ScreenGui then
             self.ScreenGui:Destroy()
         end
+    end
+end
+
+-- =====================================================
+-- TEXT TRACKING (for Localization)
+-- =====================================================
+function UILib:TrackText(window, obj, property, originalText)
+    if not window or not obj or not property then return end
+    if not window._TrackedTextObjects then
+        window._TrackedTextObjects = {}
+    end
+    table.insert(window._TrackedTextObjects, {
+        Object = obj,
+        Property = property,
+        Original = originalText or obj[property] or "",
+    })
+end
+
+function UILib:SetLocalization(window, translationTable)
+    window._LocalizationTable = translationTable or {}
+end
+
+function UILib:ToggleLocalization(window)
+    if not window._TrackedTextObjects then return end
+    window._IsLocalized = not window._IsLocalized
+
+    -- Update the locale button text
+    if window._LocaleButton then
+        window._LocaleButton.Text = window._IsLocalized and "ENG" or "ID"
+    end
+
+    local tbl = window._LocalizationTable or {}
+    for _, entry in ipairs(window._TrackedTextObjects) do
+        local obj = entry.Object
+        if obj and obj.Parent then
+            local prop = entry.Property
+            if window._IsLocalized then
+                local translated = tbl[entry.Original]
+                if translated then
+                    obj[prop] = translated
+                end
+            else
+                obj[prop] = entry.Original
+            end
+        end
+    end
+
+    -- Refresh help panel content for current tab
+    if window._HelpSelectedTab and window._HelpTabs and window._HelpContent then
+        local tab = window._HelpTabs[window._HelpSelectedTab]
+        if tab then
+            if window._IsLocalized and tab.BodyID then
+                window._HelpContent.Text = tab.BodyID
+            else
+                window._HelpContent.Text = tab.Body or ""
+            end
+            task.defer(function()
+                if window._HelpContentScroll and window._HelpContent then
+                    window._HelpContentScroll.CanvasSize = UDim2.fromOffset(0, window._HelpContent.AbsoluteSize.Y + 20)
+                end
+            end)
+        end
+    end
+end
+
+-- =====================================================
+-- HELP PANEL (Dark-themed tutorial overlay with tabs)
+-- =====================================================
+function UILib:AddHelpTab(window, title, body, bodyID)
+    if not window._HelpTabs then
+        window._HelpTabs = {}
+    end
+    table.insert(window._HelpTabs, { Title = title, Body = body, BodyID = bodyID })
+
+    -- Rebuild tab UI if help panel already exists
+    if window._HelpPanel then
+        UILib:RebuildHelpTabs(window)
+    end
+end
+
+function UILib:CreateHelpPanel(window)
+    if window._HelpPanel then return window._HelpPanel end
+
+    local screenGui = window.ScreenGui
+    local accentColor = window.AccentColor or UILib.Colors.JPUFF_HOT_PINK
+
+    -- Semi-transparent backdrop
+    local backdrop = Instance.new("TextButton", screenGui)
+    backdrop.Name = "HelpBackdrop"
+    backdrop.Size = UDim2.fromScale(1, 1)
+    backdrop.Position = UDim2.fromScale(0, 0)
+    backdrop.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    backdrop.BackgroundTransparency = 0.5
+    backdrop.BorderSizePixel = 0
+    backdrop.Text = ""
+    backdrop.ZIndex = 900
+    backdrop.Visible = false
+    backdrop.AutoButtonColor = false
+
+    -- Main help frame -- DARK THEME
+    local helpW = UILib.IsMobile and 320 or 420
+    local helpH = UILib.IsMobile and 400 or 480
+    local helpFrame = Instance.new("Frame", screenGui)
+    helpFrame.Name = "HelpPanel"
+    helpFrame.Size = UDim2.fromOffset(helpW, helpH)
+    helpFrame.Position = UDim2.fromScale(0.5, 0.5)
+    helpFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    helpFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 30)
+    helpFrame.BorderSizePixel = 0
+    helpFrame.ZIndex = 910
+    helpFrame.Visible = false
+    helpFrame.ClipsDescendants = true
+    Instance.new("UICorner", helpFrame).CornerRadius = UDim.new(0, 16)
+
+    local function refreshHelpLayout()
+        local topLeftInset, bottomRightInset = GuiService:GetGuiInset()
+        topLeftInset = topLeftInset or Vector2.new(0, 0)
+        bottomRightInset = bottomRightInset or Vector2.new(0, 0)
+
+        backdrop.Position = UDim2.fromOffset(-topLeftInset.X, -topLeftInset.Y)
+        backdrop.Size = UDim2.new(1, topLeftInset.X + bottomRightInset.X, 1, topLeftInset.Y + bottomRightInset.Y)
+        helpFrame.Position = UDim2.new(
+            0.5,
+            math.floor((bottomRightInset.X - topLeftInset.X) / 2),
+            0.5,
+            math.floor((bottomRightInset.Y - topLeftInset.Y) / 2)
+        )
+    end
+
+    refreshHelpLayout()
+
+    local helpStroke = Instance.new("UIStroke", helpFrame)
+    helpStroke.Color = accentColor
+    helpStroke.Thickness = 2
+    helpStroke.Transparency = 0.5
+
+    -- Header bar (dark)
+    local headerBar = Instance.new("Frame", helpFrame)
+    headerBar.Name = "HeaderBar"
+    headerBar.Size = UDim2.new(1, 0, 0, UILib.IsMobile and 44 or 48)
+    headerBar.Position = UDim2.fromOffset(0, 0)
+    headerBar.BackgroundColor3 = Color3.fromRGB(28, 28, 38)
+    headerBar.BorderSizePixel = 0
+    headerBar.ZIndex = 912
+
+    local headerCorner = Instance.new("UICorner", headerBar)
+    headerCorner.CornerRadius = UDim.new(0, 16)
+
+    -- Cover bottom corners of header bar
+    local headerFill = Instance.new("Frame", headerBar)
+    headerFill.Size = UDim2.new(1, 0, 0, 16)
+    headerFill.Position = UDim2.new(0, 0, 1, -16)
+    headerFill.BackgroundColor3 = Color3.fromRGB(28, 28, 38)
+    headerFill.BorderSizePixel = 0
+    headerFill.ZIndex = 912
+
+    -- Help title
+    local helpTitle = Instance.new("TextLabel", headerBar)
+    helpTitle.Size = UDim2.new(1, -60, 1, 0)
+    helpTitle.Position = UDim2.fromOffset(18, 0)
+    helpTitle.BackgroundTransparency = 1
+    helpTitle.Text = "Help & Tutorial"
+    helpTitle.Font = Enum.Font.GothamBold
+    helpTitle.TextSize = UILib.IsMobile and 16 or 18
+    helpTitle.TextColor3 = accentColor
+    helpTitle.TextXAlignment = Enum.TextXAlignment.Left
+    helpTitle.ZIndex = 913
+
+    -- Close button (accent text, no bg, like main close btn)
+    local closeHelp = Instance.new("TextButton", headerBar)
+    closeHelp.Size = UDim2.fromOffset(32, 32)
+    closeHelp.Position = UDim2.new(1, -42, 0, 8)
+    closeHelp.BackgroundTransparency = 1
+    closeHelp.BorderSizePixel = 0
+    closeHelp.Text = "X"
+    closeHelp.Font = Enum.Font.GothamBold
+    closeHelp.TextSize = 14
+    closeHelp.TextColor3 = accentColor
+    closeHelp.AutoButtonColor = false
+    closeHelp.ZIndex = 914
+
+    closeHelp.MouseEnter:Connect(function()
+        TweenService:Create(closeHelp, TweenInfo.new(0.2), {TextColor3 = UILib.Colors.TEXT_PRIMARY}):Play()
+    end)
+    closeHelp.MouseLeave:Connect(function()
+        TweenService:Create(closeHelp, TweenInfo.new(0.2), {TextColor3 = accentColor}):Play()
+    end)
+
+    -- Tab bar container
+    local tabBar = Instance.new("ScrollingFrame", helpFrame)
+    tabBar.Name = "TabBar"
+    tabBar.Size = UDim2.new(1, -20, 0, UILib.IsMobile and 36 or 38)
+    tabBar.Position = UDim2.fromOffset(10, UILib.IsMobile and 48 or 54)
+    tabBar.BackgroundTransparency = 1
+    tabBar.BorderSizePixel = 0
+    tabBar.ScrollBarThickness = 0
+    tabBar.ScrollingDirection = Enum.ScrollingDirection.X
+    tabBar.CanvasSize = UDim2.fromOffset(0, UILib.IsMobile and 36 or 38)
+    tabBar.ClipsDescendants = true
+    tabBar.ZIndex = 912
+
+    local tabLayout = Instance.new("UIListLayout", tabBar)
+    tabLayout.FillDirection = Enum.FillDirection.Horizontal
+    tabLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+    tabLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+    tabLayout.Padding = UDim.new(0, 6)
+    tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+    -- Divider below tab bar (subtle dark)
+    local tabDivider = Instance.new("Frame", helpFrame)
+    tabDivider.Size = UDim2.new(1, -20, 0, 1)
+    tabDivider.Position = UDim2.fromOffset(10, UILib.IsMobile and 87 or 95)
+    tabDivider.BackgroundColor3 = Color3.fromRGB(50, 50, 65)
+    tabDivider.BorderSizePixel = 0
+    tabDivider.ZIndex = 912
+
+    -- Content area
+    local contentScroll = Instance.new("ScrollingFrame", helpFrame)
+    contentScroll.Name = "ContentScroll"
+    contentScroll.Size = UDim2.new(1, -20, 1, -(UILib.IsMobile and 98 or 108))
+    contentScroll.Position = UDim2.fromOffset(10, UILib.IsMobile and 93 or 102)
+    contentScroll.BackgroundTransparency = 1
+    contentScroll.BorderSizePixel = 0
+    contentScroll.ScrollBarThickness = 4
+    contentScroll.ScrollBarImageColor3 = accentColor
+    contentScroll.CanvasSize = UDim2.fromOffset(0, 0)
+    contentScroll.ScrollingDirection = Enum.ScrollingDirection.Y
+    contentScroll.ClipsDescendants = true
+    contentScroll.ZIndex = 912
+
+    local contentLabel = Instance.new("TextLabel", contentScroll)
+    contentLabel.Name = "BodyText"
+    contentLabel.Size = UDim2.new(1, -10, 0, 0)
+    contentLabel.Position = UDim2.fromOffset(5, 8)
+    contentLabel.BackgroundTransparency = 1
+    contentLabel.Text = "Select a tab above to view help."
+    contentLabel.Font = Enum.Font.Gotham
+    contentLabel.TextSize = UILib.IsMobile and 13 or 14
+    contentLabel.TextColor3 = Color3.fromRGB(200, 200, 215)
+    contentLabel.TextXAlignment = Enum.TextXAlignment.Left
+    contentLabel.TextYAlignment = Enum.TextYAlignment.Top
+    contentLabel.TextWrapped = true
+    contentLabel.RichText = true
+    contentLabel.AutomaticSize = Enum.AutomaticSize.Y
+    contentLabel.ZIndex = 913
+
+    -- Store references
+    window._HelpPanel = helpFrame
+    window._HelpBackdrop = backdrop
+    window._HelpTabBar = tabBar
+    window._HelpContent = contentLabel
+    window._HelpContentScroll = contentScroll
+    window._HelpSelectedTab = nil
+
+    -- Toggle visibility
+    local function toggleHelp()
+        local isVisible = not helpFrame.Visible
+        refreshHelpLayout()
+        helpFrame.Visible = isVisible
+        backdrop.Visible = isVisible
+        if isVisible then
+            helpFrame.Size = UDim2.fromOffset(0, 0)
+            helpFrame.BackgroundTransparency = 1
+            TweenService:Create(helpFrame, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+                Size = UDim2.fromOffset(helpW, helpH),
+                BackgroundTransparency = 0,
+            }):Play()
+        end
+    end
+
+    window._ToggleHelp = toggleHelp
+
+    closeHelp.MouseButton1Click:Connect(function()
+        helpFrame.Visible = false
+        backdrop.Visible = false
+    end)
+
+    backdrop.MouseButton1Click:Connect(function()
+        helpFrame.Visible = false
+        backdrop.Visible = false
+    end)
+
+    -- Build tabs
+    UILib:RebuildHelpTabs(window)
+
+    return helpFrame
+end
+
+function UILib:RebuildHelpTabs(window)
+    local tabBar = window._HelpTabBar
+    if not tabBar then return end
+
+    local accentColor = window.AccentColor or UILib.Colors.JPUFF_HOT_PINK
+
+    -- Clear existing tab buttons
+    for _, child in ipairs(tabBar:GetChildren()) do
+        if child:IsA("TextButton") then
+            child:Destroy()
+        end
+    end
+
+    local tabs = window._HelpTabs or {}
+    local tabButtons = {}
+
+    local function selectTab(index)
+        local tab = tabs[index]
+        if not tab then return end
+        window._HelpSelectedTab = index
+
+        -- Update content (show Indonesian body if localized)
+        if window._HelpContent then
+            if window._IsLocalized and tab.BodyID then
+                window._HelpContent.Text = tab.BodyID
+            else
+                window._HelpContent.Text = tab.Body or ""
+            end
+            task.defer(function()
+                if window._HelpContentScroll and window._HelpContent then
+                    window._HelpContentScroll.CanvasSize = UDim2.fromOffset(0, window._HelpContent.AbsoluteSize.Y + 20)
+                    window._HelpContentScroll.CanvasPosition = Vector2.new(0, 0)
+                end
+            end)
+        end
+
+        -- Update tab highlighting (dark theme colors)
+        for i, btn in ipairs(tabButtons) do
+            if i == index then
+                TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = accentColor, BackgroundTransparency = 0}):Play()
+                btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            else
+                TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(40, 40, 52), BackgroundTransparency = 0}):Play()
+                btn.TextColor3 = Color3.fromRGB(160, 160, 180)
+            end
+        end
+    end
+
+    for i, tab in ipairs(tabs) do
+        local tabBtn = Instance.new("TextButton", tabBar)
+        tabBtn.Name = "Tab_" .. i
+        tabBtn.Size = UDim2.fromOffset(math.max(70, #tab.Title * 8 + 24), 30)
+        tabBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 52)
+        tabBtn.BackgroundTransparency = 0
+        tabBtn.BorderSizePixel = 0
+        tabBtn.Text = tab.Title
+        tabBtn.Font = Enum.Font.GothamMedium
+        tabBtn.TextSize = UILib.IsMobile and 11 or 12
+        tabBtn.TextColor3 = Color3.fromRGB(160, 160, 180)
+        tabBtn.AutoButtonColor = false
+        tabBtn.LayoutOrder = i
+        tabBtn.ZIndex = 913
+        Instance.new("UICorner", tabBtn).CornerRadius = UDim.new(0, 8)
+
+        tabBtn.MouseEnter:Connect(function()
+            if window._HelpSelectedTab ~= i then
+                TweenService:Create(tabBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(55, 55, 70)}):Play()
+            end
+        end)
+        tabBtn.MouseLeave:Connect(function()
+            if window._HelpSelectedTab ~= i then
+                TweenService:Create(tabBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(40, 40, 52)}):Play()
+            end
+        end)
+
+        tabBtn.MouseButton1Click:Connect(function()
+            selectTab(i)
+        end)
+
+        table.insert(tabButtons, tabBtn)
+    end
+
+    -- Auto-size canvas
+    local totalWidth = 0
+    for _, btn in ipairs(tabButtons) do
+        totalWidth = totalWidth + btn.Size.X.Offset + 6
+    end
+    tabBar.CanvasSize = UDim2.fromOffset(math.max(totalWidth, 0), 38)
+
+    -- Select first tab if none selected
+    if #tabs > 0 and not window._HelpSelectedTab then
+        selectTab(1)
+    elseif window._HelpSelectedTab and window._HelpSelectedTab <= #tabs then
+        selectTab(window._HelpSelectedTab)
+    elseif #tabs > 0 then
+        selectTab(1)
     end
 end
 
@@ -394,7 +793,6 @@ function UILib:CreateWindow(config)
     selectorStroke.Thickness = 2
     selectorStroke.Transparency = 1
 
-    -- Selector header - responsive text size
     local selectorHeader = Instance.new("TextLabel", selectorFrame)
     selectorHeader.Size = UDim2.new(1, -20, 0, 40)
     selectorHeader.Position = UDim2.fromOffset(10, 10)
@@ -409,7 +807,8 @@ function UILib:CreateWindow(config)
     -- Buttons container - responsive height (ScrollingFrame for scrollable panel list)
     local controlBtnSize = self.IsMobile and 36 or 32
     local closeBtnSize = controlBtnSize - 4
-    local actionBarHeight = math.max(controlBtnSize, closeBtnSize)
+    local utilBtnSize = self.IsMobile and 28 or 24
+    local actionBarHeight = math.max(controlBtnSize, closeBtnSize, utilBtnSize)
     local selectorButtonsContainer = Instance.new("ScrollingFrame", selectorFrame)
     selectorButtonsContainer.Size = UDim2.new(1, -20, 1, -(55 + actionBarHeight + 20))
     selectorButtonsContainer.Position = UDim2.fromOffset(10, 55)
@@ -461,6 +860,34 @@ function UILib:CreateWindow(config)
     closeBtn.TextColor3 = accentColor
     closeBtn.AutoButtonColor = false
 
+    local helpBtn = Instance.new("TextButton", actionBar)
+    helpBtn.Name = "HelpButton"
+    helpBtn.Size = UDim2.fromOffset(utilBtnSize, utilBtnSize)
+    -- Position it perfectly spaced to the left of the center, leaving room for LocaleBtn
+    helpBtn.Position = UDim2.new(0.5, -(utilBtnSize + 4), 0, math.floor((actionBarHeight - utilBtnSize) / 2))
+    helpBtn.BackgroundTransparency = 1
+    helpBtn.BorderSizePixel = 0
+    helpBtn.Text = "?"
+    helpBtn.Font = Enum.Font.GothamBold
+    helpBtn.TextSize = utilBtnSize - 4
+    helpBtn.TextColor3 = accentColor
+    helpBtn.AutoButtonColor = false
+    helpBtn.TextTransparency = 1
+
+    local localeBtn = Instance.new("TextButton", actionBar)
+    localeBtn.Name = "LocaleButton"
+    localeBtn.Size = UDim2.fromOffset(utilBtnSize, utilBtnSize)
+    -- Position it to the right of center
+    localeBtn.Position = UDim2.new(0.5, 4, 0, math.floor((actionBarHeight - utilBtnSize) / 2))
+    localeBtn.BackgroundTransparency = 1
+    localeBtn.BorderSizePixel = 0
+    localeBtn.Text = "ID"
+    localeBtn.Font = Enum.Font.GothamBold
+    localeBtn.TextSize = utilBtnSize - 6
+    localeBtn.TextColor3 = accentColor
+    localeBtn.AutoButtonColor = false
+    localeBtn.TextTransparency = 1
+
     local function connectControlHover(button)
         button.MouseEnter:Connect(function()
             TweenService:Create(button, TweenInfo.new(0.2), {
@@ -476,6 +903,8 @@ function UILib:CreateWindow(config)
 
     connectControlHover(minimizeBtn)
     connectControlHover(closeBtn)
+    connectControlHover(helpBtn)
+    connectControlHover(localeBtn)
 
     window.SelectorFrame = selectorFrame
     window.SelectorButtonsContainer = selectorButtonsContainer
@@ -483,6 +912,12 @@ function UILib:CreateWindow(config)
     window.SelectorHeader = selectorHeader
     window.MinimizeButton = minimizeBtn
     window.CloseButton = closeBtn
+    window._HelpButton = helpBtn
+    window._LocaleButton = localeBtn
+    window._HelpTabs = {}
+    window._TrackedTextObjects = {}
+    window._LocalizationTable = {}
+    window._IsLocalized = false
 
     -- Custom Drag Logic with Panel Sync
     local dragging, dragInput, dragStart, startPos
@@ -546,6 +981,21 @@ function UILib:CreateWindow(config)
     -- Attach methods to window
     UILib:AddMethods(window)
 
+    -- Create help panel (hidden by default)
+    UILib:CreateHelpPanel(window)
+
+    -- Wire ? button
+    helpBtn.MouseButton1Click:Connect(function()
+        if window._ToggleHelp then
+            window._ToggleHelp()
+        end
+    end)
+
+    -- Wire locale button
+    localeBtn.MouseButton1Click:Connect(function()
+        UILib:ToggleLocalization(window)
+    end)
+
     window.ToggleMinimize = function(self)
         self.IsMinimized = not self.IsMinimized
         selectorButtonsContainer.Visible = not self.IsMinimized
@@ -583,6 +1033,8 @@ function UILib:CreateWindow(config)
         TweenService:Create(selectorFrame, TweenInfo.new(0.6), {BackgroundTransparency = 0.15}):Play()
         TweenService:Create(selectorStroke, TweenInfo.new(0.6), {Transparency = 0.5}):Play()
         TweenService:Create(selectorHeader, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
+        TweenService:Create(helpBtn, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
+        TweenService:Create(localeBtn, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
     end)
 
     return window
@@ -629,6 +1081,7 @@ function UILib:CreatePanel(window, config)
     panelHeader.TextColor3 = UILib.Colors.JPUFF_PINK
     panelHeader.TextXAlignment = Enum.TextXAlignment.Left
     panelHeader.TextTransparency = 1
+    UILib:TrackText(window, panelHeader, "Text", displayName)
 
     -- Panel divider
     local panelDivider = Instance.new("Frame", panelFrame)
@@ -673,6 +1126,7 @@ function UILib:CreatePanel(window, config)
     mainText.TextColor3 = Color3.fromRGB(150, 150, 160)
     mainText.TextXAlignment = Enum.TextXAlignment.Left
     mainText.TextTransparency = 1
+    UILib:TrackText(window, mainText, "Text", displayName)
 
     local arrow = Instance.new("TextLabel", btn)
     arrow.Size = UDim2.fromOffset(30, 45)
@@ -706,6 +1160,7 @@ function UILib:CreatePanel(window, config)
 
     local panel = {
         Name = name,
+        _Window = window, -- Back-reference for localization tracking
         Frame = panelFrame,
         ScrollingFrame = scrollingFrame,
         Button = btn,
@@ -858,6 +1313,7 @@ function UILib:CreateToggle(panel, config)
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.TextYAlignment = Enum.TextYAlignment.Center
     label.TextTransparency = 0
+    if panel._Window then UILib:TrackText(panel._Window, label, "Text", labelText) end
 
     -- Calculate responsive toggle position based on panel width
     local toggleRightMargin = 15
@@ -1563,6 +2019,7 @@ function UILib:CreateButton(panel, config)
     btn.BorderSizePixel = 0
     btn.BackgroundTransparency = 0.1
     btn.TextTransparency = 0
+    if panel._Window then UILib:TrackText(panel._Window, btn, "Text", text) end
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 12)
 
     btn.MouseEnter:Connect(function()
@@ -1668,6 +2125,7 @@ function UILib:CreateSlider(panel, config)
     label.TextSize = 14
     label.TextColor3 = UILib.Colors.TEXT_PRIMARY
     label.TextXAlignment = Enum.TextXAlignment.Left
+    if panel._Window then UILib:TrackText(panel._Window, label, "Text", text) end
     
     local valueLabel = Instance.new("TextLabel", panel.ScrollingFrame)
     valueLabel.Size = UDim2.new(0, 50, 0, 20)
@@ -1773,6 +2231,7 @@ function UILib:CreateDropdown(panel, config)
     labelText.TextColor3 = UILib.Colors.TEXT_PRIMARY
     labelText.TextXAlignment = Enum.TextXAlignment.Left
     labelText.TextTransparency = 0
+    if panel._Window then UILib:TrackText(panel._Window, labelText, "Text", label) end
     
     -- Dropdown button
     local dropdownBtn = Instance.new("TextButton", panel.ScrollingFrame)
@@ -2715,4 +3174,5 @@ function UILib.ESP:Toggle(state)
     end
 end
 
+getgenv().UILib = UILib
 return UILib
