@@ -71,6 +71,7 @@ Creates the main selector window that holds all panels.
 SYNTAX:
     local Window = UILib:CreateWindow({
         Title = "My GUI",             -- Window title (string)
+        HelpText = "Instructions",    -- Optional: Global instructions for the GUI
         AccentColor = Color3,         -- Optional: Accent color for styling
         Name = "MyWindow",            -- Optional: ScreenGui name
         Position = UDim2,             -- Optional: Starting position
@@ -80,6 +81,7 @@ SYNTAX:
 RETURNS: Window object with these methods:
     - Window:ShowPanel(panelName)     -- Show a panel by name
     - Window:HidePanel(panelName)     -- Hide a panel by name
+    - Window:SetHelp(text)           -- Show instructions via '?' button
     - Window:CreatePanel(config)      -- Create a new panel
     - Window:AddToggleKey(keyCode)    -- Add keybind to toggle GUI visibility
     - Window:Notify(config)           -- Create notification (same as UILib:CreateNotification)
@@ -110,13 +112,13 @@ SYNTAX:
         DisplayName = "Combat Tab",   -- Display name (optional, defaults to Name)
         Color = Color3,               -- Optional: Panel accent color
         LayoutOrder = 1,              -- Optional: Order in selector list
-        Size = UDim2,                 -- Optional: Custom panel size
-        HelpText = "Desc here..."     -- Optional: Help tutorial text for this panel
+        Size = UDim2                  -- Optional: Custom panel size
     })
 
 RETURNS: Panel object with these properties/methods:
     - Panel.Name                      -- Panel identifier
     - Panel.Frame                     -- The panel Frame instance
+    - Panel:SetHelp(text)             -- Show panel-specific instructions
     - Panel.ScrollingFrame            -- ScrollingFrame for content
     - Panel.Button                    -- Selector button
     - Panel.ContentY                  -- Current Y position for content
@@ -511,10 +513,6 @@ DESKTOP SIZES (UILib.DesktopSizes):
     SliderWidth = 200
     ButtonPadding = 10
     ContentPadding = 20
-    HelpMenuWidth = 400
-    HelpMenuHeight = 310
-    HelpTitleSize = 20
-    HelpDescSize = 14
 
 MOBILE SIZES (UILib.MobileSizes):
     SelectorWidth = 160
@@ -529,10 +527,6 @@ MOBILE SIZES (UILib.MobileSizes):
     SliderWidth = 160
     ButtonPadding = 8
     ContentPadding = 15
-    HelpMenuWidth = 260
-    HelpMenuHeight = 240
-    HelpTitleSize = 18
-    HelpDescSize = 12
 
 =================================================================
 18. SAVING/SYNCING UI STATE
@@ -716,6 +710,65 @@ USAGE EXAMPLE:
     UILib.ESP:Toggle(true)
 
 =================================================================
+21. HELP MENU SYSTEM (? Button)
+=================================================================
+The selector panel has a built-in "?" button at the top-right corner
+that opens a light-themed help overlay with a dynamic tab system.
+
+ADDING HELP TABS:
+    Window:AddHelpTab("Tab Title", "Body text for this tab.\nSupports multiple lines and <b>RichText</b>.")
+
+- Tabs are displayed as pill-shaped buttons in a horizontal scrollbar.
+- Clicking a tab shows its body text in the content area below.
+- The help panel uses a light background (no dark theme).
+- A close button (X) and clicking the backdrop will close the panel.
+
+EXAMPLE:
+    Window:AddHelpTab("Auto Answer", "Automatically answers word chains.\nEnable Hard Mode for obscure words.")
+    Window:AddHelpTab("Word Finder", "Search for words by prefix.\nClick a result to submit it.")
+
+=================================================================
+22. LOCALIZATION SYSTEM (ID/ENG Button)
+=================================================================
+The selector panel has a built-in "ID" button beside the "?" button.
+Clicking it toggles all tracked GUI text between English and
+the translation provided via SetLocalization.
+
+SETTING TRANSLATIONS:
+    Window:SetLocalization({
+        ["Auto Answer"] = "Jawab Otomatis",
+        ["Word Finder"] = "Pencari Kata",
+        ["Enable Feature"] = "Aktifkan Fitur",
+    })
+
+- Keys must exactly match the original English text of labels,
+  panel headers, button text, toggle labels, slider labels,
+  and dropdown labels.
+- Clicking "ID" translates all tracked text to Indonesian.
+  The button changes to "ENG".
+- Clicking "ENG" reverts all text back to original English.
+- Only text created via UILib element creators is tracked.
+  Custom Instance.new() text is NOT automatically tracked.
+
+MANUAL TRACKING (for custom text):
+    UILib:TrackText(window, textLabelInstance, "Text", "Original English")
+
+TOGGLING PROGRAMMATICALLY:
+    Window:ToggleLocalization()
+
+EXAMPLE:
+    local Window = UILib:CreateWindow({Title = "My GUI"})
+
+    local Panel = Window:CreatePanel({Name = "Main", DisplayName = "Main Panel"})
+    UILib:CreateToggle(Panel, {Label = "Auto Mode", Callback = function() end})
+
+    Window:SetLocalization({
+        ["Main Panel"] = "Panel Utama",
+        ["Auto Mode"] = "Mode Otomatis",
+    })
+    -- Now clicking "ID" button will translate all text.
+
+=================================================================
 
                        END OF MANUAL
 =================================================================
@@ -723,6 +776,6 @@ This manual is intended for AI assistants to reference when
 modifying scripts that use the JPUFF UILib.
 
 Repository: https://github.com/ncmpuff/UILib
-Version: 1.0.2
+Version: 1.1.0
 =================================================================
 ]]
